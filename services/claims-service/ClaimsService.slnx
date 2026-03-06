@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ClaimsService.API/ClaimsService.API.csproj" />
+  <Project Path="ClaimsService.Application/ClaimsService.Application.csproj" />
+  <Project Path="ClaimsService.Domain/ClaimsService.Domain.csproj" />
+  <Project Path="ClaimsService.Infrastructure/ClaimsService.Infrastructure.csproj" />
+</Solution>

@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "building-blocks", "building-blocks", "{31CBEB51-93DC-9CA1-DA8D-67643319BEE1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contracts", "contracts", "{F1D36C55-650B-7C5B-D7BF-C2C03C80872A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Contracts", "building-blocks\contracts\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj", "{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F1D36C55-650B-7C5B-D7BF-C2C03C80872A} = {31CBEB51-93DC-9CA1-DA8D-67643319BEE1}
+		{3FFEA3EF-C15D-C7EE-1C21-41CEBC43D2C5} = {F1D36C55-650B-7C5B-D7BF-C2C03C80872A}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4F307ABA-0A57-4923-9BC2-E35B9F0E5178}
+	EndGlobalSection
+EndGlobal
