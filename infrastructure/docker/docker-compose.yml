@@ -1,0 +1,26 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: claims-postgres
+    environment:
+      POSTGRES_DB: claimsdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: claims-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: claimsuser
+      RABBITMQ_DEFAULT_PASS: claimspassword
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  postgres-data:

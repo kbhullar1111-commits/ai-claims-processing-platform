@@ -1,3 +1,4 @@
+using MediatR;
 using BuildingBlocks.Contracts.Claims;
 using ClaimsService.Application.Commands;
 using ClaimsService.Application.Interfaces;
@@ -5,7 +6,7 @@ using ClaimsService.Domain.Entities;
 
 namespace ClaimsService.Application.Handlers;
 
-public class SubmitClaimCommandHandler
+public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Guid>
 {
     private readonly IClaimRepository _claimRepository;
     private readonly IEventPublisher _eventPublisher;
@@ -18,9 +19,9 @@ public class SubmitClaimCommandHandler
         _eventPublisher = eventPublisher;
     }
 
-    public async Task<Guid> HandleAsync(SubmitClaimCommand command)
+    public async Task<Guid> Handle(SubmitClaimCommand command, CancellationToken cancellationToken)
     {
-        var claim = new Claim(
+        var claim = Claim.Submit(
             command.CustomerId,
             command.PolicyId,
             command.ClaimAmount
