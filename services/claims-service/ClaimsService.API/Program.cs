@@ -36,6 +36,7 @@ builder.Services.AddMassTransit(x =>
     {
         o.UsePostgres();
         o.UseBusOutbox();
+        o.QueryDelay = TimeSpan.FromSeconds(10);
     });
 
     x.UsingRabbitMq((context, cfg) =>
@@ -51,6 +52,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
+builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
 var app = builder.Build();

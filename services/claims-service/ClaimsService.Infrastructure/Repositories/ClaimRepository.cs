@@ -24,9 +24,4 @@ public class ClaimRepository : IClaimRepository
         return await _dbContext.Claims
             .FirstOrDefaultAsync(c => c.Id == claimId);
     }
-
-    public async Task SaveChangesAsync()
-    {
-        await _dbContext.SaveChangesAsync();
-    }
 }

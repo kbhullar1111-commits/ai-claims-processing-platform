@@ -1,4 +1,5 @@
 using ClaimsService.Domain.Entities;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClaimsService.Infrastructure.Persistence;
@@ -14,15 +15,12 @@ public class ClaimsDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Claim>(entity =>
-        {
-            entity.HasKey(c => c.Id);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClaimsDbContext).Assembly);
 
-            entity.Property(c => c.ClaimAmount)
-                  .IsRequired();
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
 
-            entity.Property(c => c.Status)
-                  .IsRequired();
-        });
+        base.OnModelCreating(modelBuilder);
     }
 }

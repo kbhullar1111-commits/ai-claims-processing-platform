@@ -10,13 +10,16 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
 {
     private readonly IClaimRepository _claimRepository;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IUnitOfWork _unitOfWork;
 
     public SubmitClaimCommandHandler(
         IClaimRepository claimRepository,
-        IEventPublisher eventPublisher)
+        IEventPublisher eventPublisher,
+        IUnitOfWork unitOfWork)
     {
         _claimRepository = claimRepository;
         _eventPublisher = eventPublisher;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Guid> Handle(SubmitClaimCommand command, CancellationToken cancellationToken)
@@ -27,10 +30,6 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
             command.ClaimAmount
         );
 
-        await _claimRepository.AddAsync(claim);
-
-        await _claimRepository.SaveChangesAsync();
-
         var claimSubmittedEvent = new ClaimSubmitted(
             claim.Id,
             claim.CustomerId,
@@ -39,7 +38,11 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
             claim.SubmittedAt
         );
 
+        await _claimRepository.AddAsync(claim);
+
         await _eventPublisher.PublishAsync(claimSubmittedEvent);
+
+        await _unitOfWork.CommitAsync(cancellationToken);
 
         return claim.Id;
     }

@@ -8,5 +8,4 @@ public interface IClaimRepository
 
     Task<Claim?> GetByIdAsync(Guid claimId);
 
-    Task SaveChangesAsync();
 }
