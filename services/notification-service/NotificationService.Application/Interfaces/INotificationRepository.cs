@@ -7,4 +7,6 @@ public interface INotificationRepository
     Task AddAsync(Notification notification, CancellationToken cancellationToken);
 
     Task<bool> ExistsAsync(Guid eventId, CancellationToken cancellationToken);
+
+    Task<List<Notification>> GetPendingAsync(CancellationToken cancellationToken);
 }

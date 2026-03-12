@@ -1,6 +1,13 @@
-@ClaimsService.API_HostAddress = http://localhost:5282
+@ClaimsService.API_HostAddress = http://localhost:5001
 
-GET {{ClaimsService.API_HostAddress}}/weatherforecast/
+POST {{ClaimsService.API_HostAddress}}/claims
+Content-Type: application/json
 Accept: application/json
+
+{
+	"customerId": "d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10",
+	"policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
+	"claimAmount": 1250.75
+}
 
 ###

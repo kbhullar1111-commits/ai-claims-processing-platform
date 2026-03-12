@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
+using NotificationService.Domain.Enums;
 using NotificationService.Infrastructure.Persistence;
 
 namespace NotificationService.Infrastructure.Persistence.Repositories;
@@ -23,5 +24,15 @@ public class NotificationRepository : INotificationRepository
     {
         return await _dbContext.Notifications
             .AnyAsync(x => x.EventId == eventId, cancellationToken);
+    }
+
+    public async Task<List<Notification>> GetPendingAsync(CancellationToken cancellationToken)
+    {
+        return await _dbContext.Notifications
+            .Where(x => x.Status == NotificationStatus.Pending &&
+                (x.NextRetryAt == null || x.NextRetryAt <= DateTime.UtcNow))
+            .OrderBy(x => x.CreatedAt)
+            .Take(20)
+            .ToListAsync(cancellationToken);
     }
 }

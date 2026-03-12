@@ -41,10 +41,14 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("localhost", "/", h =>
+        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
+        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
+        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+
+        cfg.Host(rabbitHost, "/", h =>
         {
-            h.Username("claimsuser");
-            h.Password("claimspassword");
+            h.Username(rabbitUsername);
+            h.Password(rabbitPassword);
         });
 
         cfg.ConfigureEndpoints(context);
