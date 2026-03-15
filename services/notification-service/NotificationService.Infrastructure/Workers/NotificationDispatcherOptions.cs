@@ -7,4 +7,6 @@ public class NotificationDispatcherOptions
     public int RetryDelayMinutes { get; set; } = 5;
 
     public int MaxRetryAttempts { get; set; } = 5;
+
+    public int BatchSize { get; set; } = 20;
 }

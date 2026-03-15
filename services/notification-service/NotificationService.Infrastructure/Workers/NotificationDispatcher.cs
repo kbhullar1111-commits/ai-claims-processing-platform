@@ -31,7 +31,19 @@ public class NotificationDispatcher : BackgroundService
         {
             try
             {
-                await ProcessNotifications(stoppingToken);
+                using var scope = _scopeFactory.CreateScope();
+                var repository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                IEnumerable<INotificationSender> senders = scope.ServiceProvider.GetServices<INotificationSender>();
+                var notifications = await repository.GetPendingAsync(_options.BatchSize, stoppingToken);
+                var senderMap = senders.ToDictionary(s => s.Channel);
+
+                foreach (var notification in notifications)
+                {
+                    await ProcessNotification(notification, senderMap, stoppingToken);
+                }
+
+                await unitOfWork.CommitAsync(stoppingToken);
             }
             catch (Exception ex)
             {
@@ -42,72 +54,62 @@ public class NotificationDispatcher : BackgroundService
         }
     }
 
-    private async Task ProcessNotifications(CancellationToken cancellationToken)
+    private async Task ProcessNotification(Notification notification, IDictionary<NotificationChannel, INotificationSender> senderMap, CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
-
-        var repository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        IEnumerable<INotificationSender> senders = scope.ServiceProvider.GetServices<INotificationSender>();
-            
-
-        var notifications = await repository.GetPendingAsync(cancellationToken);
-
-        foreach (var notification in notifications)
+        try
         {
-            try
-            {
-                var sender = senders.FirstOrDefault(s => s.Channel == notification.Channel);
+            senderMap.TryGetValue(notification.Channel, out var sender);
 
-                if (sender == null)
-                {
-                    notification.Parameters.TryGetValue("ClaimId", out var claimId);
-
-                    _logger.LogWarning(
-                        "No sender found. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, Channel={Channel}",
-                        notification.NotificationId,
-                        notification.EventId,
-                        claimId,
-                        notification.CustomerId,
-                        notification.Channel);
-
-                    continue;
-                }
-
-                await sender.SendAsync(notification, cancellationToken);
-
-                notification.MarkSent();
-            }
-            catch (Exception ex)
+            if (sender == null)
             {
                 notification.Parameters.TryGetValue("ClaimId", out var claimId);
 
-                if (notification.RetryCount + 1 >= _options.MaxRetryAttempts)
-                {
-                    notification.MarkFailed();
-                    _logger.LogError(
-                        ex,
-                        "Notification marked failed. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",
-                        notification.NotificationId,
-                        notification.EventId,
-                        claimId,
-                        notification.CustomerId,
-                        notification.RetryCount);
-                    continue;
-                }
-
-                notification.ScheduleRetry(_options.RetryDelayMinutes);
                 _logger.LogWarning(
+                    "No sender found. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, Channel={Channel}",
+                    notification.NotificationId,
+                    notification.EventId,
+                    claimId,
+                    notification.CustomerId,
+                    notification.Channel);
+
+                return;
+            }
+
+            await sender.SendAsync(notification, cancellationToken);
+
+            notification.MarkSent();
+
+        }
+        catch (Exception ex)
+        {
+            notification.Parameters.TryGetValue("ClaimId", out var claimId);
+
+            if (notification.RetryCount + 1 >= _options.MaxRetryAttempts)
+            {
+                notification.MarkFailed();
+                _logger.LogError(
                     ex,
-                    "Notification failed; scheduled retry. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",
+                    "Notification marked failed. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",
                     notification.NotificationId,
                     notification.EventId,
                     claimId,
                     notification.CustomerId,
                     notification.RetryCount);
+                return;
             }
+            var delayMinutes = Math.Min(Math.Pow(2, notification.RetryCount), 60);
+            notification.ScheduleRetry(delayMinutes);
+            _logger.LogWarning(
+                ex,
+                "Notification failed; scheduled retry. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",
+                notification.NotificationId,
+                notification.EventId,
+                claimId,
+                notification.CustomerId,
+                notification.RetryCount);
         }
 
-        await unitOfWork.CommitAsync(cancellationToken);
     }
+
+
 }   

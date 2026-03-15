@@ -6,6 +6,8 @@ using MediatR;
 using ClaimsService.Application;
 using ClaimsService.Application.Commands;
 using MassTransit;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +26,10 @@ builder.Services.AddDbContext<ClaimsDbContext>(options =>
         builder.Configuration.GetConnectionString("Postgres"),
         b => b.MigrationsAssembly("ClaimsService.Infrastructure")
 ));
+
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<ClaimsDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -67,6 +73,36 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+app.MapHealthChecks("/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
 app.MapControllers();
 
 app.Run();
+
+internal sealed class ClaimsDatabaseHealthCheck(ClaimsDbContext dbContext) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+            return canConnect
+                ? HealthCheckResult.Healthy("Postgres is reachable.")
+                : HealthCheckResult.Unhealthy("Postgres is not reachable.");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Postgres health check failed.", ex);
+        }
+    }
+}

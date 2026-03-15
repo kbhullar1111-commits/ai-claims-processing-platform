@@ -1,4 +1,4 @@
-﻿# Workspace Folder Structure
+# Workspace Folder Structure
 
 Generated: 2026-03-11
 

@@ -25,11 +25,12 @@ The compose file starts these containers:
 
 3. `claims-migrator` and `notification-migrator`
 - Image: `mcr.microsoft.com/dotnet/sdk:10.0`
-- Purpose: Run `dotnet ef database update` before APIs start.
-- These are one-shot containers and must complete successfully.
+- Purpose: Run `dotnet ef database update` on demand when schema changes need to be applied.
+- These are one-shot containers behind the `migrate` profile and are not part of normal `docker compose up -d`.
 
 4. `claims-api` and `notification-api`
-- Start only after their corresponding migrator container completes.
+- Start normally without running migrators automatically.
+- Expect the database schema to already be up to date.
 - Use RabbitMQ for publish/consume event flow.
 - Port mappings:
   - Claims API: `5001:8080`
@@ -47,7 +48,19 @@ From this folder:
 docker compose up -d
 ```
 
-This automatically runs migrations for both services before starting API containers.
+This starts the normal local stack without running migrations.
+
+If you need to apply EF Core migrations:
+
+```bash
+docker compose --profile migrate up claims-migrator notification-migrator
+```
+
+You can remove the stopped migrator containers afterwards:
+
+```bash
+docker compose rm -f claims-migrator notification-migrator
+```
 
 To stop:
 

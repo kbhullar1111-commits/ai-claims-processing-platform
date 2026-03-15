@@ -1,0 +1,8 @@
+**
+!services/notification-service/NotificationService.API/**
+!services/notification-service/NotificationService.Application/**
+!services/notification-service/NotificationService.Domain/**
+!services/notification-service/NotificationService.Infrastructure/**
+!building-blocks/contracts/BuildingBlocks.Contracts/**
+**/bin/**
+**/obj/**

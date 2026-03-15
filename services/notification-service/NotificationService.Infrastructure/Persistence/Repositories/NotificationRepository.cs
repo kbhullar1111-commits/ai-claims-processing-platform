@@ -9,6 +9,15 @@ namespace NotificationService.Infrastructure.Persistence.Repositories;
 public class NotificationRepository : INotificationRepository
 {
     private readonly NotificationDbContext _dbContext;
+    private const string PendingNotificationsQuery = """
+    SELECT *
+    FROM notifications
+    WHERE "Status" = {0}
+    AND ("NextRetryAt" IS NULL OR "NextRetryAt" <= now())
+    ORDER BY "CreatedAt"
+    FOR UPDATE SKIP LOCKED
+    LIMIT {1}
+    """;
 
     public NotificationRepository(NotificationDbContext dbContext)
     {
@@ -26,13 +35,17 @@ public class NotificationRepository : INotificationRepository
             .AnyAsync(x => x.EventId == eventId, cancellationToken);
     }
 
-    public async Task<List<Notification>> GetPendingAsync(CancellationToken cancellationToken)
+    public async Task<List<Notification>> GetPendingAsync(int batchSize, CancellationToken cancellationToken)
     {
+        var effectiveBatchSize = batchSize <= 0 ? 20 : batchSize;
+
+        var pending = (int)NotificationStatus.Pending;
+
         return await _dbContext.Notifications
-            .Where(x => x.Status == NotificationStatus.Pending &&
-                (x.NextRetryAt == null || x.NextRetryAt <= DateTime.UtcNow))
-            .OrderBy(x => x.CreatedAt)
-            .Take(20)
-            .ToListAsync(cancellationToken);
+        .FromSqlInterpolated($@"
+            {PendingNotificationsQuery}",
+            pending,
+            effectiveBatchSize)
+        .ToListAsync(cancellationToken);
     }
 }

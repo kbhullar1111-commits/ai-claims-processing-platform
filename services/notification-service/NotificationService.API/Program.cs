@@ -8,17 +8,43 @@ using NotificationService.Infrastructure.Persistence.Repositories;
 using NotificationService.Infrastructure.Workers;
 using NotificationService.Infrastructure.Senders;
 using Npgsql;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
 Directory.CreateDirectory(logDirectory);
+// Uncomment this block if Seq sink diagnostics are needed again.
+// var selfLogPath = Path.Combine(logDirectory, "serilog-selflog.txt");
+// var selfLogLock = new object();
+//
+// SelfLog.Enable(message =>
+// {
+//     lock (selfLogLock)
+//     {
+//         File.AppendAllText(selfLogPath, $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
+//     }
+// });
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
     .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "NotificationService.API")
+    .Enrich.WithProperty("Service", "notification-api")
     .WriteTo.Console()
+    // Uncomment this sink if Seq logging is needed again.
+    // .WriteTo.Seq(
+    //     serverUrl: "http://seq:80",
+    //     bufferBaseFilename: Path.Combine(logDirectory, "seq-buffer"),
+    //     batchPostingLimit: 100,
+    //     period: TimeSpan.FromSeconds(2))
     .WriteTo.File(
         Path.Combine(logDirectory, "notification-.log"),
         rollingInterval: RollingInterval.Day,
@@ -43,6 +69,10 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
         npgsqlDataSource,
         b => b.MigrationsAssembly("NotificationService.Infrastructure")
 ));
+
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<NotificationDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
 builder.Services.AddMassTransit(x =>
 {
@@ -83,4 +113,34 @@ var app = builder.Build();
 //     app.UseSwaggerUI();
 // }
 
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+app.MapHealthChecks("/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
 app.Run();
+
+internal sealed class NotificationDatabaseHealthCheck(NotificationDbContext dbContext) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+            return canConnect
+                ? HealthCheckResult.Healthy("Postgres is reachable.")
+                : HealthCheckResult.Unhealthy("Postgres is not reachable.");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Postgres health check failed.", ex);
+        }
+    }
+}

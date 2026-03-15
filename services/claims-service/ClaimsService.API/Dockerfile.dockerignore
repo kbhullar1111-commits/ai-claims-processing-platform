@@ -1,0 +1,8 @@
+**
+!services/claims-service/ClaimsService.API/**
+!services/claims-service/ClaimsService.Application/**
+!services/claims-service/ClaimsService.Domain/**
+!services/claims-service/ClaimsService.Infrastructure/**
+!building-blocks/contracts/BuildingBlocks.Contracts/**
+**/bin/**
+**/obj/**
