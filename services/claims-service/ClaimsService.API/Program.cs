@@ -8,9 +8,33 @@ using ClaimsService.Application.Commands;
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Serilog;
+using Serilog.Events;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+{
+    var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
+    var seqUrl = context.Configuration["Observability:Seq:Url"];
+
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "ClaimsService.API")
+        .Enrich.WithProperty("Service", "claims-api")
+        .WriteTo.Console();
+
+    if (seqEnabled && !string.IsNullOrWhiteSpace(seqUrl))
+    {
+        loggerConfiguration.WriteTo.Seq(seqUrl);
+    }
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

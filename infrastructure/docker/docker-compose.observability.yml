@@ -1,0 +1,19 @@
+services:
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    ports:
+      - "5341:80"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+
+  claims-api:
+    environment:
+      Observability__Seq__Enabled: "true"
+      Observability__Seq__Url: http://seq:80
+
+  notification-api:
+    environment:
+      Observability__Seq__Enabled: "true"
+      Observability__Seq__Url: http://seq:80

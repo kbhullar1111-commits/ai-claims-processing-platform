@@ -1,6 +1,6 @@
 # Architecture Review
 
-Generated: 2026-03-13
+Generated: 2026-03-15
 
 ## Purpose
 
@@ -34,6 +34,7 @@ In the claims service, [services/claims-service/ClaimsService.API/Program.cs](se
 
 - ASP.NET Core controllers
 - EF Core with PostgreSQL
+- health endpoints at `/health`, `/ready`, and `/live`
 - MediatR registration
 - MassTransit with RabbitMQ
 - MassTransit Entity Framework outbox
@@ -44,6 +45,7 @@ In the claims service, [services/claims-service/ClaimsService.API/Program.cs](se
 In the notification service, [services/notification-service/NotificationService.API/Program.cs](services/notification-service/NotificationService.API/Program.cs) configures:
 
 - Serilog
+- health endpoints at `/health`, `/ready`, and `/live`
 - EF Core with PostgreSQL
 - MassTransit consumer registration
 - MediatR registration
@@ -134,6 +136,13 @@ Why these files belong in `Infrastructure`:
 - senders depend on external delivery mechanisms
 - workers depend on hosting/runtime mechanics
 
+Environment-level infrastructure also carries architectural weight in this workspace:
+
+- [infrastructure/docker/docker-compose.yml](infrastructure/docker/docker-compose.yml) defines the steady-state local runtime stack: PostgreSQL, RabbitMQ, and the API containers.
+- [infrastructure/docker/docker-compose.migrations.yml](infrastructure/docker/docker-compose.migrations.yml) holds one-shot EF Core migration containers so schema update jobs are kept separate from normal runtime startup.
+- [infrastructure/docker/docker-compose.observability.yml](infrastructure/docker/docker-compose.observability.yml) enables optional Seq-based observability without changing the default local startup path.
+- [infrastructure/docker/README.md](infrastructure/docker/README.md) documents the local startup and migration workflow.
+
 ## End-to-End Request and Event Flow
 
 ### Claims Submission Flow
@@ -154,9 +163,10 @@ This keeps the controller thin and makes the handler the application-level coord
 2. [services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs](services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs) consumes the message.
 3. The consumer maps the message to `CreateNotificationCommand` and sends it via MediatR.
 4. [services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs](services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs) checks for duplicates, creates a domain `Notification`, persists it, and commits.
-5. [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs) polls pending notifications.
-6. The dispatcher selects the appropriate sender, currently [services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs](services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs).
-7. The notification is marked sent, retried later, or marked failed.
+5. [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs) polls pending notifications using configurable `PollIntervalSeconds` and `BatchSize` from [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcherOptions.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcherOptions.cs).
+6. [services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs](services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs) uses `FOR UPDATE SKIP LOCKED` so multiple dispatcher instances can claim work safely.
+7. The dispatcher selects the appropriate sender, currently [services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs](services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs).
+8. The notification is marked sent, retried with exponential backoff, or marked failed.
 
 This split is architecturally useful because event consumption and actual notification delivery are decoupled.
 
@@ -204,6 +214,8 @@ The claims service configures the MassTransit Entity Framework outbox in [servic
 
 The notification service then consumes the event and converts it back into an application command. That adapter pattern is one of the cleanest design choices in the current solution.
 
+The notification dispatcher now also uses row locking with `FOR UPDATE SKIP LOCKED`, which makes the database-backed queue pattern safer to scale horizontally than a simple polling query.
+
 ## Repository Pattern In This Solution
 
 The repository pattern is implemented as a thin abstraction over EF Core.
@@ -223,6 +235,7 @@ Notification service:
 How it behaves:
 
 - repositories stage adds and queries against `DbContext`
+- notification work acquisition is infrastructure-specific and currently uses SQL row locking to avoid duplicate dispatch across workers
 - the unit of work performs `SaveChangesAsync`
 - handlers coordinate repository calls and commit when the use case is complete
 
@@ -249,6 +262,9 @@ This is a standard microservice integration practice and a good architectural ch
 - MassTransit decouples services asynchronously
 - claims service uses outbox support for more reliable event publication
 - notification service separates persistence from delivery through a background dispatcher
+- health, readiness, and liveness endpoints are now present on both APIs for container-oriented operation
+- local Docker workflow separates runtime, migrations, and optional observability into distinct compose files
+- notification dispatch supports configurable batch size, row locking, and bounded retry backoff
 
 ## Current Gaps And Risks To Watch
 
@@ -256,7 +272,10 @@ This is a standard microservice integration practice and a good architectural ch
 - the claims service uses an application-orchestrated event publishing style rather than domain events; this is fine now, but richer domain workflows may push toward aggregate-raised domain events later
 - naming is mostly consistent, but `Persistance` in claims service is misspelled; it is harmless technically but worth correcting before the codebase grows further
 - notification dispatch currently logs email sending rather than integrating a real provider; that is expected, but production delivery concerns are still open
-- notification service currently relies on polling for dispatch; this is simple and robust, but throughput and latency expectations should be revisited as volume grows
+- notification service currently relies on polling for dispatch; `FOR UPDATE SKIP LOCKED` improves safety, but throughput and latency expectations should still be revisited as volume grows
+- the local logging story is pragmatic rather than fully centralized: both APIs can publish to Seq, but Seq is intentionally opt-in through a separate compose file so default startup stays simple and resilient
+- Seq delivery is intentionally non-buffered, so optional observability does not accumulate local buffer files if Seq is deliberately offline
+- local startup now assumes schema is already migrated; that is cleaner operationally, but the separate migrations compose workflow must be followed on a fresh volume
 
 ## Architectural Summary
 
@@ -268,6 +287,8 @@ The current solution is a solid early-stage architecture for an event-driven mod
 - infrastructure implements storage and messaging concerns
 - MassTransit connects services asynchronously using shared contracts
 - repositories and unit of work abstract EF Core from the application layer
+- both APIs expose health endpoints suitable for container probes
+- local Docker infrastructure supports explicit migration runs through a separate one-shot migrations compose file
 
 The design is pragmatic, understandable, and suitable for incremental growth if the current boundaries are maintained.
 

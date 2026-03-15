@@ -1,0 +1,48 @@
+services:
+  claims-migrator:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    container_name: claims-migrator
+    working_dir: /src
+    volumes:
+      - ../..:/src
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=claimsdb;Username=postgres;Password=postgres
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: claimsuser
+      RabbitMq__Password: claimspassword
+    command: >-
+      /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
+      && export PATH=$$PATH:/root/.dotnet/tools
+      && dotnet restore services/claims-service/ClaimsService.API/ClaimsService.API.csproj --force
+      && dotnet restore services/claims-service/ClaimsService.Infrastructure/ClaimsService.Infrastructure.csproj --force
+      && dotnet ef database update
+      --project services/claims-service/ClaimsService.Infrastructure/ClaimsService.Infrastructure.csproj
+      --startup-project services/claims-service/ClaimsService.API/ClaimsService.API.csproj"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-migrator:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    container_name: notification-migrator
+    working_dir: /src
+    volumes:
+      - ../..:/src
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=notificationdb;Username=postgres;Password=postgres
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: claimsuser
+      RabbitMq__Password: claimspassword
+    command: >-
+      /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
+      && export PATH=$$PATH:/root/.dotnet/tools
+      && dotnet restore services/notification-service/NotificationService.API/NotificationService.API.csproj --force
+      && dotnet restore services/notification-service/NotificationService.Infrastructure/NotificationService.Infrastructure.csproj --force
+      && dotnet ef database update
+      --project services/notification-service/NotificationService.Infrastructure/NotificationService.Infrastructure.csproj
+      --startup-project services/notification-service/NotificationService.API/NotificationService.API.csproj"
+    depends_on:
+      postgres:
+        condition: service_healthy
