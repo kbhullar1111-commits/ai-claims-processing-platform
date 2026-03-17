@@ -37,7 +37,6 @@ artifacts such as most `bin/` and `obj/` directories are intentionally omitted.
 `-- services/
     |-- claims-service/
     |   |-- ClaimsService.slnx
-    |   |-- update-full-db.ps1
     |   |-- ClaimsService.API/
     |   |   |-- ClaimsService.API.csproj
     |   |   |-- ClaimsService.API.http
@@ -82,7 +81,6 @@ artifacts such as most `bin/` and `obj/` directories are intentionally omitted.
     |-- document-service/
     |-- fraud-service/
     `-- notification-service/
-        |-- infra-build-diag.log
         |-- NotificationService.slnx
         |-- NotificationService.API/
         |   |-- NotificationService.API.csproj

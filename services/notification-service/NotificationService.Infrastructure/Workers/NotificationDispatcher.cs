@@ -2,7 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
 using NotificationService.Application.Interfaces;
+using NotificationService.Domain.Entities;
+using NotificationService.Domain.Enums;
 using NotificationService.Infrastructure.Senders;
 
 namespace NotificationService.Infrastructure.Workers;
@@ -35,15 +38,18 @@ public class NotificationDispatcher : BackgroundService
                 var repository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
                 var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                 IEnumerable<INotificationSender> senders = scope.ServiceProvider.GetServices<INotificationSender>();
-                var notifications = await repository.GetPendingAsync(_options.BatchSize, stoppingToken);
-                var senderMap = senders.ToDictionary(s => s.Channel);
-
-                foreach (var notification in notifications)
+                using (SuppressInstrumentationScope.Begin())
                 {
-                    await ProcessNotification(notification, senderMap, stoppingToken);
-                }
+                    var notifications = await repository.GetPendingAsync(_options.BatchSize, stoppingToken);
+                    var senderMap = senders.ToDictionary(s => s.Channel);
 
-                await unitOfWork.CommitAsync(stoppingToken);
+                    foreach (var notification in notifications)
+                    {
+                        await ProcessNotification(notification, senderMap, stoppingToken);
+                    }
+
+                    await unitOfWork.CommitAsync(stoppingToken);
+                }
             }
             catch (Exception ex)
             {
@@ -63,9 +69,10 @@ public class NotificationDispatcher : BackgroundService
             if (sender == null)
             {
                 notification.Parameters.TryGetValue("ClaimId", out var claimId);
+                notification.MarkFailed();
 
                 _logger.LogWarning(
-                    "No sender found. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, Channel={Channel}",
+                    "No sender found; notification marked failed. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, Channel={Channel}",
                     notification.NotificationId,
                     notification.EventId,
                     claimId,
@@ -97,7 +104,7 @@ public class NotificationDispatcher : BackgroundService
                     notification.RetryCount);
                 return;
             }
-            var delayMinutes = Math.Min(Math.Pow(2, notification.RetryCount), 60);
+            var delayMinutes = (int)Math.Min(Math.Pow(2, notification.RetryCount), 60);
             notification.ScheduleRetry(delayMinutes);
             _logger.LogWarning(
                 ex,

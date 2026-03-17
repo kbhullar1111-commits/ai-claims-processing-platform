@@ -2,6 +2,8 @@ services:
   claims-migrator:
     image: mcr.microsoft.com/dotnet/sdk:10.0
     container_name: claims-migrator
+    networks:
+      - claims-network
     working_dir: /src
     volumes:
       - ../..:/src
@@ -26,6 +28,8 @@ services:
   notification-migrator:
     image: mcr.microsoft.com/dotnet/sdk:10.0
     container_name: notification-migrator
+    networks:
+      - claims-network
     working_dir: /src
     volumes:
       - ../..:/src

@@ -8,6 +8,9 @@ using ClaimsService.Application.Commands;
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
 using System.Reflection;
@@ -21,7 +24,7 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
-        .MinimumLevel.Information()
+        .MinimumLevel.Warning()
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
@@ -42,7 +45,8 @@ builder.Services.AddSwaggerGen(options =>
 {
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    options.IncludeXmlComments(xmlPath);
+    if (File.Exists(xmlPath))
+        options.IncludeXmlComments(xmlPath);
 });
 
 builder.Services.AddDbContext<ClaimsDbContext>(options =>
@@ -89,6 +93,36 @@ builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
+var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProvider =>
+    {
+        tracerProvider
+            .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(traceSampleRatio)))
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.Filter = httpContext =>
+                    !httpContext.Request.Path.StartsWithSegments("/health") &&
+                    !httpContext.Request.Path.StartsWithSegments("/live") &&
+                    !httpContext.Request.Path.StartsWithSegments("/ready");
+            })
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddSource("MassTransit")
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService("ClaimsService"))
+            .AddOtlpExporter();
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusExporter();
+    });
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -108,6 +142,8 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
 });
 
 app.MapControllers();
+
+app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
 

@@ -42,10 +42,7 @@ public class NotificationRepository : INotificationRepository
         var pending = (int)NotificationStatus.Pending;
 
         return await _dbContext.Notifications
-        .FromSqlInterpolated($@"
-            {PendingNotificationsQuery}",
-            pending,
-            effectiveBatchSize)
+        .FromSqlRaw(PendingNotificationsQuery, pending, effectiveBatchSize)
         .ToListAsync(cancellationToken);
     }
 }

@@ -27,6 +27,9 @@ The base compose file starts these steady-state runtime containers:
 - Start normally without running migrators automatically.
 - Expect the database schema to already be up to date.
 - Use RabbitMQ for publish/consume event flow.
+- Both services wait for `postgres` to pass its healthcheck (`pg_isready`) before starting.
+- Both expose `/live` (liveness) and `/ready` (readiness — checks Postgres connectivity) endpoints intended for orchestrator probes, not public access.
+- Docker tracks each API's health via `/ready`; use `docker compose ps` to see health status.
 - Port mappings:
   - Claims API: `5001:8080`
   - Notification API: `5002:8080`
@@ -43,24 +46,53 @@ The base compose file starts these steady-state runtime containers:
 
 - `postgres-data`: named Docker volume that keeps Postgres data between container restarts.
 
+## Network
+
+All services (including observability and migration containers) join a single explicitly declared bridge network: `claims-network`.
+
+This prevents the common problem of partial teardown leaving orphaned containers attached to Docker's default network. Because the network is declared in the base compose file and marked `external: true` in the overlays, Docker manages it predictably.
+
+To inspect the network:
+```bash
+docker network inspect claims-network
+```
+
 ## How To Run
 
-From this folder:
+PowerShell scripts are in the `commands/` subfolder. Run them from anywhere — they resolve the compose file paths automatically.
 
-```bash
-docker compose up -d
+### One-time setup (new machine)
+```powershell
+.\commands\setup.ps1
 ```
 
-This starts the normal local stack without running migrations.
-
-If you want to enable optional observability services such as Seq:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+### Start base stack
+```powershell
+.\commands\start.ps1
 ```
 
-This keeps Seq disabled by default. If the observability compose file is not used, both APIs continue to run normally without trying to send logs to Seq.
-If Seq is enabled intentionally but not running, the APIs still continue to run; only log delivery to Seq is affected.
+### Start with observability (Seq + Jaeger)
+```powershell
+.\commands\start-observability.ps1
+```
+
+### Run database migrations
+Run this after first start or after schema changes:
+```powershell
+.\commands\migrate.ps1
+```
+
+### Stop all containers (keep DB data)
+```powershell
+.\commands\stop.ps1
+```
+
+### Stop all containers and wipe DB data
+```powershell
+.\commands\stop.ps1 -v
+```
+
+> **Important:** Always use `commands\stop.ps1` to shut down. It always includes the observability overlay so all containers (including seq and jaeger) are properly removed and the `claims-network` is cleaned up. This avoids the orphaned network problem that occurs when shutting down with a different compose file set than was used to start.
 
 If you need to apply EF Core migrations:
 
@@ -95,7 +127,38 @@ docker compose down -v
 - RabbitMQ UI: `http://localhost:15672`
 - Claims API: `http://localhost:5001`
 - Notification API: `http://localhost:5002`
-- Seq when enabled: `http://localhost:5341`
+- Seq when enabled: `http://localhost:5341` (internal port 8080, mapped to host 5341)
+
+### Health Check Endpoints
+
+These are infrastructure probes intended for orchestrators (Kubernetes liveness/readiness probes). They are not part of the public API and are not exposed in Swagger.
+
+| Endpoint | Purpose | Expected response |
+|---|---|---|
+| `GET /health` | All checks combined | `200 Healthy` |
+| `GET /live` | Liveness — is the process running? | Always `200 Healthy` |
+| `GET /ready` | Readiness — is Postgres reachable? | `200 Healthy` or `503 Unhealthy` |
+
+Claims API:
+```bash
+curl http://localhost:5001/health
+curl http://localhost:5001/live
+curl http://localhost:5001/ready
+```
+
+Notification API:
+```bash
+curl http://localhost:5002/health
+curl http://localhost:5002/live
+curl http://localhost:5002/ready
+```
+
+### Swagger UI
+
+Available in all environments for local development convenience:
+
+- Claims API: `http://localhost:5001/swagger`
+- Notification API: `http://localhost:5002/swagger`
 
 ## Useful Commands
 

@@ -2,18 +2,60 @@ services:
   seq:
     image: datalust/seq:latest
     container_name: seq
+    networks:
+      - claims-network
     ports:
-      - "5341:80"
+      - "5341:8080"
     environment:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: jaeger
+    networks:
+      - claims-network
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - MEMORY_MAX_TRACES=100
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - claims-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    networks:
+      - claims-network
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
   claims-api:
     environment:
       Observability__Seq__Enabled: "true"
-      Observability__Seq__Url: http://seq:80
+      Observability__Seq__Url: http://seq:8080
+      Observability__Tracing__SampleRatio: "1.0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
 
   notification-api:
     environment:
       Observability__Seq__Enabled: "true"
-      Observability__Seq__Url: http://seq:80
+      Observability__Seq__Url: http://seq:8080
+      Observability__Tracing__SampleRatio: "1.0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
