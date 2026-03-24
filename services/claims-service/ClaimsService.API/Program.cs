@@ -2,9 +2,12 @@ using ClaimsService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ClaimsService.Application.Interfaces;
 using ClaimsService.Infrastructure.Repositories;
+using ClaimsService.Infrastructure.Observability.Metrics;
+using ClaimsService.Infrastructure.Observability.Constants;
 using MediatR;
 using ClaimsService.Application;
 using ClaimsService.Application.Commands;
+using ClaimsService.Application.Sagas;
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -66,12 +69,27 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddMassTransit(x =>
 {
+    x.SetKebabCaseEndpointNameFormatter();
+
     x.AddEntityFrameworkOutbox<ClaimsDbContext>(o =>
     {
         o.UsePostgres();
         o.UseBusOutbox();
         o.QueryDelay = TimeSpan.FromSeconds(10);
     });
+
+    x.AddSagaStateMachine<ClaimProcessingSagaStateMachine, ClaimProcessingSagaState>()
+        .EntityFrameworkRepository(r =>
+        {
+            r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+
+            r.AddDbContext<DbContext, ClaimsDbContext>((provider, options) =>
+            {
+                options.UseNpgsql(
+                    provider.GetRequiredService<IConfiguration>()
+                        .GetConnectionString("Postgres"));
+            });
+        });
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -92,6 +110,7 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
+builder.Services.AddSingleton<IClaimsMetrics, ClaimsMetrics>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 
@@ -112,12 +131,13 @@ builder.Services.AddOpenTelemetry()
             .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService("ClaimsService"))
+                    .AddService(TelemetryConstants.ServiceName))
             .AddOtlpExporter();
     })
     .WithMetrics(metrics =>
     {
         metrics
+            .AddMeter(TelemetryConstants.MeterName)
             .AddAspNetCoreInstrumentation()
             .AddRuntimeInstrumentation()
             .AddPrometheusExporter();

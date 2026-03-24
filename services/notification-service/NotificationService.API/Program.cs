@@ -7,6 +7,8 @@ using NotificationService.Infrastructure.Persistence;
 using NotificationService.Infrastructure.Persistence.Repositories;
 using NotificationService.Infrastructure.Workers;
 using NotificationService.Infrastructure.Senders;
+using NotificationService.Infrastructure.Observability.Metrics;
+using NotificationService.Infrastructure.Observability.Constants;
 using Npgsql;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -96,6 +98,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<INotificationSender, EmailSender>();
+builder.Services.AddSingleton<INotificationMetrics, NotificationMetrics>();
 
 builder.Services.AddHostedService<NotificationDispatcher>();
 
@@ -121,12 +124,13 @@ builder.Services.AddOpenTelemetry()
             .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService("NotificationService"))
+                    .AddService(TelemetryConstants.ServiceName))
             .AddOtlpExporter();
     })
     .WithMetrics(metrics =>
     {
         metrics
+            .AddMeter(TelemetryConstants.MeterName)
             .AddAspNetCoreInstrumentation()
             .AddRuntimeInstrumentation()
             .AddPrometheusExporter();

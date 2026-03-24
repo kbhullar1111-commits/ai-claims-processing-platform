@@ -2,11 +2,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using OpenTelemetry;
 using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
 using NotificationService.Domain.Enums;
 using NotificationService.Infrastructure.Senders;
+using NotificationService.Infrastructure.Observability.Metrics;
 
 namespace NotificationService.Infrastructure.Workers;
 
@@ -15,15 +17,18 @@ public class NotificationDispatcher : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<NotificationDispatcher> _logger;
     private readonly NotificationDispatcherOptions _options;
+    private readonly INotificationMetrics _notificationMetrics;
 
     public NotificationDispatcher(
         IServiceScopeFactory scopeFactory,
         IOptions<NotificationDispatcherOptions> options,
-        ILogger<NotificationDispatcher> logger)
+        ILogger<NotificationDispatcher> logger,
+        INotificationMetrics notificationMetrics)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
         _logger = logger;
+        _notificationMetrics = notificationMetrics;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -70,6 +75,7 @@ public class NotificationDispatcher : BackgroundService
             {
                 notification.Parameters.TryGetValue("ClaimId", out var claimId);
                 notification.MarkFailed();
+                _notificationMetrics.NotificationFailed(notification.Channel.ToString());
 
                 _logger.LogWarning(
                     "No sender found; notification marked failed. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, Channel={Channel}",
@@ -82,9 +88,14 @@ public class NotificationDispatcher : BackgroundService
                 return;
             }
 
+            var stopwatch = Stopwatch.StartNew();
             await sender.SendAsync(notification, cancellationToken);
+            stopwatch.Stop();
+            _notificationMetrics.NotificationSendDuration(
+                    notification.Channel.ToString(),stopwatch.Elapsed.TotalSeconds);
 
             notification.MarkSent();
+            _notificationMetrics.NotificationSent(notification.Channel.ToString());
 
         }
         catch (Exception ex)
@@ -94,6 +105,8 @@ public class NotificationDispatcher : BackgroundService
             if (notification.RetryCount + 1 >= _options.MaxRetryAttempts)
             {
                 notification.MarkFailed();
+                _notificationMetrics.NotificationFailed(notification.Channel.ToString());
+
                 _logger.LogError(
                     ex,
                     "Notification marked failed. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",
@@ -106,6 +119,7 @@ public class NotificationDispatcher : BackgroundService
             }
             var delayMinutes = (int)Math.Min(Math.Pow(2, notification.RetryCount), 60);
             notification.ScheduleRetry(delayMinutes);
+            _notificationMetrics.NotificationRetried(notification.Channel.ToString());
             _logger.LogWarning(
                 ex,
                 "Notification failed; scheduled retry. NotificationId={NotificationId}, EventId={EventId}, ClaimId={ClaimId}, CustomerId={CustomerId}, RetryCount={RetryCount}",

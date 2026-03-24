@@ -11,15 +11,18 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
     private readonly IClaimRepository _claimRepository;
     private readonly IEventPublisher _eventPublisher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IClaimsMetrics _claimsMetrics;
 
     public SubmitClaimCommandHandler(
         IClaimRepository claimRepository,
         IEventPublisher eventPublisher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IClaimsMetrics claimsMetrics)
     {
         _claimRepository = claimRepository;
         _eventPublisher = eventPublisher;
         _unitOfWork = unitOfWork;
+        _claimsMetrics = claimsMetrics;
     }
 
     public async Task<Guid> Handle(SubmitClaimCommand command, CancellationToken cancellationToken)
@@ -43,6 +46,8 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
         await _eventPublisher.PublishAsync(claimSubmittedEvent);
 
         await _unitOfWork.CommitAsync(cancellationToken);
+
+        _claimsMetrics.ClaimsSubmitted();
 
         return claim.Id;
     }

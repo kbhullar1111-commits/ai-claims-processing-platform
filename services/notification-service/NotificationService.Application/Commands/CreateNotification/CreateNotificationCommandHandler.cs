@@ -12,15 +12,18 @@ public class CreateNotificationCommandHandler
     private readonly INotificationRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateNotificationCommandHandler> _logger;
+    private readonly INotificationMetrics _metrics;
 
     public CreateNotificationCommandHandler(
         INotificationRepository repository,
         IUnitOfWork unitOfWork,
-        ILogger<CreateNotificationCommandHandler> logger)
+        ILogger<CreateNotificationCommandHandler> logger,
+        INotificationMetrics metrics)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Handle(CreateNotificationCommand request, CancellationToken cancellationToken)
@@ -56,5 +59,7 @@ public class CreateNotificationCommandHandler
             request.EventId,
             claimId,
             request.CustomerId);
+            
+        _metrics.NotificationCreated(NotificationChannel.Email.ToString());
     }
 }
