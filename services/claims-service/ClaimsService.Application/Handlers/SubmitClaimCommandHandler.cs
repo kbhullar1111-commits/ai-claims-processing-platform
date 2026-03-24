@@ -13,6 +13,9 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClaimsMetrics _claimsMetrics;
 
+    private IReadOnlyList<string> RequiredDocuments { get; init; } = new List<string>(["ID Proof", "Accident Photos", "Police Report"]);
+
+
     public SubmitClaimCommandHandler(
         IClaimRepository claimRepository,
         IEventPublisher eventPublisher,
@@ -38,7 +41,8 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
             claim.CustomerId,
             claim.PolicyId,
             claim.ClaimAmount,
-            claim.SubmittedAt
+            claim.SubmittedAt,
+            RequiredDocuments
         );
 
         await _claimRepository.AddAsync(claim);
