@@ -1,6 +1,6 @@
 namespace BuildingBlocks.Contracts.Documents;
 
-public record DocumentsUploaded(
+public record DocumentUploaded(
     Guid DocumentId,
     Guid ClaimId,
     string DocumentType,

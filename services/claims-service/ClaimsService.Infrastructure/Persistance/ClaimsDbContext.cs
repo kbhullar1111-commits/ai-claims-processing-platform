@@ -24,7 +24,8 @@ public class ClaimsDbContext : DbContext
         modelBuilder.AddOutboxMessageEntity();
         modelBuilder.AddOutboxStateEntity();
 
-        modelBuilder.AddSagaStateEntity<ClaimProcessingSagaState>();
+        modelBuilder.Entity<ClaimProcessingSagaState>()
+            .HasKey(x => x.CorrelationId);
 
         modelBuilder.Entity<ClaimProcessingSagaState>()
             .Property(x => x.RequiredDocuments)

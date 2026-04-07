@@ -1,4 +1,7 @@
 using MassTransit;
+using BuildingBlocks.Contracts.Claims;
+using BuildingBlocks.Contracts.Documents;
+using ClaimsService.Application.Commands;
 
 namespace ClaimsService.Application.Sagas;
 
@@ -40,12 +43,11 @@ public class ClaimProcessingSagaStateMachine :
                     context.Saga.RequiredDocuments =
                         context.Message.RequiredDocuments.ToList();
                 })
-                .Send(new Uri("queue:document-service"), context => new RequestDocuments
-                {
-                    ClaimId = context.Message.ClaimId,
-                    CustomerId = context.Message.CustomerId,
-                    Documents = context.Message.RequiredDocuments
-                })
+                .Send(new Uri("queue:document-service"), context =>
+                    new RequestDocuments(
+                        context.Message.ClaimId,
+                        context.Message.CustomerId,
+                        context.Message.RequiredDocuments))
                 .TransitionTo(WaitingForDocuments)
         );
 
@@ -68,10 +70,7 @@ public class ClaimProcessingSagaStateMachine :
                             context.Saga.UploadedDocuments.Contains(doc)),
                     binder => binder
                         .Send(new Uri("queue:fraud-service"), context =>
-                            new RunFraudCheck
-                            {
-                                ClaimId = context.Saga.ClaimId
-                            })
+                            new RunFraudCheck(context.Saga.ClaimId))
                         .TransitionTo(FraudCheckRunning)
                 )
         );

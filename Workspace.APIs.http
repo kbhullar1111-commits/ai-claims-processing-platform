@@ -1,0 +1,88 @@
+@claimsHost = http://localhost:5001
+@notificationHost = http://localhost:5002
+@documentHost = http://localhost:5003
+
+### =====================
+### Claims Service
+### =====================
+
+### Submit claim
+POST {{claimsHost}}/claims
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10",
+  "policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
+  "claimAmount": 1250.75
+}
+
+### Claims health
+GET {{claimsHost}}/health
+Accept: application/json
+
+### Claims liveness
+GET {{claimsHost}}/live
+Accept: application/json
+
+### Claims readiness
+GET {{claimsHost}}/ready
+Accept: application/json
+
+### Claims metrics (Prometheus)
+GET {{claimsHost}}/metrics
+Accept: text/plain
+
+### Claims Swagger JSON (development)
+GET {{claimsHost}}/swagger/v1/swagger.json
+Accept: application/json
+
+### =====================
+### Document Service
+### =====================
+
+### Generate upload URL
+# @name generateUploadUrl
+POST {{documentHost}}/documents/upload-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "claimId": "11111111-1111-1111-1111-111111111111",
+  "documentType": "invoice",
+  "fileName": "invoice-123.pdf"
+}
+
+### Upload document to pre-signed URL from previous response
+PUT {{generateUploadUrl.response.body.$.uploadUrl}}
+Content-Type: application/octet-stream
+
+< ./infrastructure/docs/Workflow-diagram.md
+
+### Document Swagger JSON (development)
+GET {{documentHost}}/swagger/v1/swagger.json
+Accept: application/json
+
+### =====================
+### Notification Service
+### =====================
+
+### Notification health
+GET {{notificationHost}}/health
+Accept: application/json
+
+### Notification liveness
+GET {{notificationHost}}/live
+Accept: application/json
+
+### Notification readiness
+GET {{notificationHost}}/ready
+Accept: application/json
+
+### Notification metrics (Prometheus)
+GET {{notificationHost}}/metrics
+Accept: text/plain
+
+### Notification Swagger JSON
+GET {{notificationHost}}/swagger/v1/swagger.json
+Accept: application/json

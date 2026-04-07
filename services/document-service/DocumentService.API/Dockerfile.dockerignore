@@ -1,0 +1,8 @@
+**
+!services/document-service/DocumentService.API/**
+!services/document-service/DocumentService.Application/**
+!services/document-service/DocumentService.Domain/**
+!services/document-service/DocumentService.Infrastructure/**
+!building-blocks/contracts/BuildingBlocks.Contracts/**
+**/bin/**
+**/obj/**

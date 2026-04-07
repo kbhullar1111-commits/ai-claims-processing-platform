@@ -1,12 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\ClaimsService.Domain\ClaimsService.Domain.csproj" />
-    <ProjectReference Include="..\..\..\building-blocks\contracts\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\DocumentService.Domain\DocumentService.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="9.1.0" />
     <PackageReference Include="MediatR" Version="14.1.0" />
   </ItemGroup>
 
