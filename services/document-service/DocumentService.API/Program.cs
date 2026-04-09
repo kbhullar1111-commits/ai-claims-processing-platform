@@ -57,6 +57,12 @@ builder.Services.AddMassTransit(x =>
             h.Password("claimspassword");
         });
 
+        cfg.ReceiveEndpoint("minio-object-created", e =>
+        {
+            e.Bind("minio");   // IMPORTANT
+            e.ConfigureConsumer<ObjectCreatedConsumer>(context);
+        });
+
         cfg.ConfigureEndpoints(context);
     });
 });

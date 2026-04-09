@@ -41,23 +41,65 @@ Accept: application/json
 ### Document Service
 ### =====================
 
-### Generate upload URL
-# @name generateUploadUrl
+### Generate upload URL - ID Proof
+# @name generateUploadUrlIdProof
 POST {{documentHost}}/documents/upload-url
 Content-Type: application/json
 Accept: application/json
 
 {
   "claimId": "11111111-1111-1111-1111-111111111111",
-  "documentType": "invoice",
-  "fileName": "invoice-123.pdf"
+  "documentType": "ID Proof",
+  "fileName": "id-proof.pdf"
 }
 
-### Upload document to pre-signed URL from previous response
-PUT {{generateUploadUrl.response.body.$.uploadUrl}}
-Content-Type: application/octet-stream
+### Upload ID Proof document
+@uploadUrlIdProof = {{generateUploadUrlIdProof.response.body.$.uploadUrl}}
 
-< ./infrastructure/docs/Workflow-diagram.md
+PUT {{uploadUrlIdProof}}
+Content-Type: application/pdf
+
+< ./id-proof.pdf
+
+### Generate upload URL - Accident Photos
+# @name generateUploadUrlAccidentPhotos
+POST {{documentHost}}/documents/upload-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "claimId": "11111111-1111-1111-1111-111111111111",
+  "documentType": "Accident Photos",
+  "fileName": "accident-photos.pdf"
+}
+
+### Upload Accident Photos document
+@uploadUrlAccidentPhotos = {{generateUploadUrlAccidentPhotos.response.body.$.uploadUrl}}
+
+PUT {{uploadUrlAccidentPhotos}}
+Content-Type: application/pdf
+
+< ./accident-photos.pdf
+
+### Generate upload URL - Police Report
+# @name generateUploadUrlPoliceReport
+POST {{documentHost}}/documents/upload-url
+Content-Type: application/json
+Accept: application/json
+
+{
+  "claimId": "11111111-1111-1111-1111-111111111111",
+  "documentType": "Police Report",
+  "fileName": "police-report.pdf"
+}
+
+### Upload Police Report document
+@uploadUrlPoliceReport = {{generateUploadUrlPoliceReport.response.body.$.uploadUrl}}
+
+PUT {{uploadUrlPoliceReport}}
+Content-Type: application/pdf
+
+< ./police-report.pdf
 
 ### Document Swagger JSON (development)
 GET {{documentHost}}/swagger/v1/swagger.json

@@ -9,7 +9,10 @@ public class ObjectCreatedConsumer :
     public async Task Consume(
         ConsumeContext<MinioObjectCreated> context)
     {
-        var key = context.Message.ObjectKey;
+        var key = context.Message.S3?.Object?.Key;
+
+        if (string.IsNullOrWhiteSpace(key))
+         return;
 
         // claims/{claimId}/{documentType}/{file}
         var parts = key.Split('/');
@@ -17,11 +20,11 @@ public class ObjectCreatedConsumer :
         var claimId = Guid.Parse(parts[1]);
         var documentType = parts[2];
 
-        await context.Publish(new DocumentUploaded
-        {
-            ClaimId = claimId,
-            DocumentType = documentType,
-            ObjectKey = key
-        });
+        await context.Publish(new DocumentUploaded(
+            Guid.NewGuid(),
+            claimId,
+            documentType,
+            DateTime.UtcNow
+        ));
     }
 }

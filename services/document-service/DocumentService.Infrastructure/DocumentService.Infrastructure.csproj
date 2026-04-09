@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DocumentService.Application\DocumentService.Application.csproj" />
     <ProjectReference Include="..\DocumentService.Domain\DocumentService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\building-blocks\contracts\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
