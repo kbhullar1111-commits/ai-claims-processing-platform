@@ -59,3 +59,11 @@ services:
       Observability__Tracing__SampleRatio: "1.0"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+
+  document-api:
+    environment:
+      Observability__Seq__Enabled: "true"
+      Observability__Seq__Url: http://seq:8080
+      Observability__Tracing__SampleRatio: "1.0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc

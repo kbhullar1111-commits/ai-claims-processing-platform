@@ -34,6 +34,7 @@ services:
 
   minio:
     image: minio/minio
+    container_name: claims-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -45,6 +46,21 @@ services:
       MINIO_NOTIFY_AMQP_EXCHANGE_TYPE_PRIMARY: "fanout"
       MINIO_NOTIFY_AMQP_ROUTING_KEY_PRIMARY: "minio"
       MINIO_NOTIFY_AMQP_DURABLE_PRIMARY: "on"
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - claims-network
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
   # Optional observability services such as Seq live in docker-compose.observability.yml.
 
   claims-api:
@@ -66,6 +82,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
       interval: 10s
@@ -144,3 +162,4 @@ networks:
 
 volumes:
   postgres-data:
+  minio-data:

@@ -48,7 +48,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "11111111-1111-1111-1111-111111111111",
+  "claimId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "documentType": "ID Proof",
   "fileName": "id-proof.pdf"
 }

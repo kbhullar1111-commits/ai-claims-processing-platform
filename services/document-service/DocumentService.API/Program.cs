@@ -4,16 +4,54 @@ using DocumentService.Infrastructure.Storage;
 using DocumentService.Infrastructure.Messaging;
 using MassTransit;
 using MediatR;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Minio;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using Serilog;
+using Serilog.Events;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+{
+    var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
+    var seqUrl = context.Configuration["Observability:Seq:Url"];
+
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Warning()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "DocumentService.API")
+        .Enrich.WithProperty("Service", "document-api")
+        .WriteTo.Console();
+
+    if (seqEnabled && !string.IsNullOrWhiteSpace(seqUrl))
+    {
+        loggerConfiguration.WriteTo.Seq(seqUrl);
+    }
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        options.IncludeXmlComments(xmlPath);
+});
 builder.Services.Configure<ObjectStorageOptions>(
     builder.Configuration.GetSection("ObjectStorage"));
+
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"]);
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -40,9 +78,16 @@ builder.Services.AddScoped<IObjectStorage>(sp =>
         .GetRequiredService<IOptions<ObjectStorageOptions>>()
         .Value;
 
-    var client = sp.GetRequiredService<IMinioClient>();
+    // Use a separate client for presigned URLs pointing at the public endpoint
+    // so browsers can reach MinIO directly (not the internal Docker hostname).
+    var publicEndpoint = options.PublicEndpoint ?? options.Endpoint;
+    var presignClient = new MinioClient()
+        .WithEndpoint(publicEndpoint)
+        .WithCredentials(options.AccessKey, options.SecretKey)
+        .WithSSL(options.UseSsl)
+        .Build();
 
-    return new MinioObjectStorage(client, options.Bucket);
+    return new MinioObjectStorage(presignClient, options.Bucket);
 });
 
 builder.Services.AddMassTransit(x =>
@@ -67,6 +112,35 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProvider =>
+    {
+        tracerProvider
+            .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(traceSampleRatio)))
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.Filter = httpContext =>
+                    !httpContext.Request.Path.StartsWithSegments("/health") &&
+                    !httpContext.Request.Path.StartsWithSegments("/live") &&
+                    !httpContext.Request.Path.StartsWithSegments("/ready");
+            })
+            .AddHttpClientInstrumentation()
+            .AddSource("MassTransit")
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService("DocumentService"))
+            .AddOtlpExporter();
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusExporter();
+    });
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -89,9 +163,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+app.MapHealthChecks("/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
 

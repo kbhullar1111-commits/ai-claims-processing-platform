@@ -82,6 +82,7 @@ builder.Services.AddMassTransit(x =>
         .EntityFrameworkRepository(r =>
         {
             r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+            r.UsePostgres();
 
             r.AddDbContext<DbContext, ClaimsDbContext>((provider, options) =>
             {

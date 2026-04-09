@@ -97,7 +97,8 @@ Run this after first start or after schema changes:
 If you need to apply EF Core migrations:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator notification-migrator
+docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator
+docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator
 ```
 
 You can remove the stopped migrator containers afterwards:
@@ -218,17 +219,17 @@ Streams Seq logs when the observability overlay is running.
 18. `docker compose -f docker-compose.yml -f docker-compose.observability.yml config`
 Prints and validates the merged runtime plus observability configuration.
 
-19. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator notification-migrator`
-Runs both migration containers on demand.
+19. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator`
+Runs the claims service migration container on demand.
 
-20. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator`
-Runs only the claims service migration container.
+20. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator`
+Runs the notification service migration container on demand.
 
-21. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator`
-Runs only the notification service migration container.
-
-22. `docker compose rm -f claims-migrator notification-migrator`
+21. `docker compose rm -f claims-migrator notification-migrator`
 Removes the stopped migration containers after they finish.
 
-23. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml config`
+22. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml config`
 Prints and validates the merged runtime plus migrations configuration.
+
+23. `commands\migrate.cmd`
+Runs claims and notification migrations sequentially using the standard compose overlays.
