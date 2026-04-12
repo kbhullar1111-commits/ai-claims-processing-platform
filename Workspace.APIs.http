@@ -48,7 +48,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "claimId": "1179997d-78ac-4445-b220-cc72efe6bc2d",
   "documentType": "ID Proof",
   "fileName": "id-proof.pdf"
 }
@@ -68,7 +68,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "11111111-1111-1111-1111-111111111111",
+  "claimId": "1179997d-78ac-4445-b220-cc72efe6bc2d",
   "documentType": "Accident Photos",
   "fileName": "accident-photos.pdf"
 }
@@ -88,7 +88,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "11111111-1111-1111-1111-111111111111",
+  "claimId": "1179997d-78ac-4445-b220-cc72efe6bc2d",
   "documentType": "Police Report",
   "fileName": "police-report.pdf"
 }

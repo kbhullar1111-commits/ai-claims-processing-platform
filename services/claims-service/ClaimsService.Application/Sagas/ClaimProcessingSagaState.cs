@@ -19,7 +19,14 @@ public class ClaimProcessingSagaState :
 
     public List<string> UploadedDocuments { get; set; } = new();
 
-    public DateTime? DocumentsDeadline { get; set; }
+    //public DateTime? DocumentsDeadline { get; set; }
 
-    public int RetryCount { get; set; }
+        // Fraud result
+    public decimal? FraudRiskScore { get; set; }
+
+    public bool? IsFraudulent { get; set; }
+
+    public string? FraudReason { get; set; }
+
+    public DateTime? FraudEvaluatedAt { get; set; }
 }

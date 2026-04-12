@@ -1,4 +1,4 @@
-namespace ClaimsService.Application.Commands;
+namespace BuildingBlocks.Contracts.Documents;
 public record RequestDocuments(
     Guid ClaimId,
     Guid CustomerId,

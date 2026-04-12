@@ -1,7 +1,8 @@
 using MassTransit;
 using BuildingBlocks.Contracts.Claims;
 using BuildingBlocks.Contracts.Documents;
-using ClaimsService.Application.Commands;
+using BuildingBlocks.Contracts.Fraud;
+using BuildingBlocks.Contracts.Payment;
 
 namespace ClaimsService.Application.Sagas;
 
@@ -10,10 +11,14 @@ public class ClaimProcessingSagaStateMachine :
 {
     public State WaitingForDocuments { get; private set; } = null!;
     public State FraudCheckRunning { get; private set; } = null!;
+    public State Rejected { get; private set; } = null!;
     public State PaymentProcessing { get; private set; } = null!;
+    //public State PaymentFailed { get; private set; } = null!;
 
     public Event<ClaimSubmitted> ClaimSubmitted { get; private set; } = null!;
     public Event<DocumentUploaded> DocumentUploaded { get; private set; } = null!;
+    public Event<FraudCheckCompleted> FraudCheckCompleted { get; private set; } = null!;
+    public Event<PaymentProcessed> PaymentProcessed { get; private set; } = null!;
 
     public ClaimProcessingSagaStateMachine()
     {
@@ -32,6 +37,16 @@ public class ClaimProcessingSagaStateMachine :
             x.CorrelateById(context => context.Message.ClaimId);
         });
 
+        Event(() => FraudCheckCompleted, x =>
+        {
+            x.CorrelateById(context => context.Message.ClaimId);
+        });
+
+        Event(() => PaymentProcessed, x =>
+        {
+            x.CorrelateById(context => context.Message.ClaimId);
+        });
+
         Initially(
             When(ClaimSubmitted)
                 .Then(context =>
@@ -43,7 +58,7 @@ public class ClaimProcessingSagaStateMachine :
                     context.Saga.RequiredDocuments =
                         context.Message.RequiredDocuments.ToList();
                 })
-                .Send(new Uri("queue:document-service"), context =>
+                .Send(new Uri("queue:notification-service"), context =>
                     new RequestDocuments(
                         context.Message.ClaimId,
                         context.Message.CustomerId,
@@ -74,5 +89,36 @@ public class ClaimProcessingSagaStateMachine :
                         .TransitionTo(FraudCheckRunning)
                 )
         );
+
+        During(FraudCheckRunning,
+            When(FraudCheckCompleted)
+                .Then(context =>
+                {
+                    context.Saga.FraudRiskScore = context.Message.RiskScore;
+                    context.Saga.IsFraudulent = context.Message.IsFraudulent;
+                    context.Saga.FraudReason = context.Message.Reason;
+                    context.Saga.FraudEvaluatedAt = context.Message.EvaluatedAt;
+                })
+                .IfElse(context => context.Message.RiskScore >= 0.8m
+                                || context.Message.IsFraudulent,
+                    thenBinder => thenBinder.TransitionTo(Rejected),
+                    elseBinder => elseBinder
+                        .Send(new Uri("queue:payment-service"),
+                            context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
+                        .TransitionTo(PaymentProcessing)
+                )
+        );
+
+        During(PaymentProcessing,
+            When(PaymentProcessed)
+                .IfElse(context => !context.Message.Success,
+                    thenBinder => thenBinder
+                        .TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
+                        .Finalize(),
+                    elseBinder => elseBinder
+                        .Finalize()
+                )
+        );
+
     }
 }

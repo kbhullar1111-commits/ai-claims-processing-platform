@@ -13,6 +13,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
+using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,9 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
         loggerConfiguration.WriteTo.Seq(seqUrl);
     }
 });
+
+builder.Services.AddDbContext<DocumentDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -96,14 +100,19 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("rabbitmq", "/", h =>
+        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
+        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
+        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+
+        cfg.Host(rabbitHost, "/", h =>
         {
-            h.Username("claimsuser");
-            h.Password("claimspassword");
+            h.Username(rabbitUsername);
+            h.Password(rabbitPassword);
         });
 
         cfg.ReceiveEndpoint("minio-object-created", e =>
         {
+            e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
             e.Bind("minio");   // IMPORTANT
             e.ConfigureConsumer<ObjectCreatedConsumer>(context);
         });
@@ -152,9 +161,10 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<IOptions<ObjectStorageOptions>>()
         .Value;
 
-    await MinioBucketInitializer.EnsureBucketExists(
+    await MinioBucketInitializer.EnsureBucketConfigured(
         client,
-        options.Bucket);
+        options.Bucket,
+        "arn:minio:sqs::PRIMARY:amqp");
 }
 
 if (app.Environment.IsDevelopment())

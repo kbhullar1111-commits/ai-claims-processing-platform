@@ -1,4 +1,4 @@
-namespace ClaimsService.Application.Commands;
+namespace BuildingBlocks.Contracts.Fraud;
 public record RunFraudCheck(
     Guid ClaimId
 );

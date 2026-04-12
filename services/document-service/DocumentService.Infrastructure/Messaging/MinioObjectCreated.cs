@@ -4,6 +4,13 @@ public class MinioObjectCreated
 {
     public string? EventName { get; set; }
 
+    public string? Key { get; set; }
+
+    public List<MinioRecord>? Records { get; set; }
+}
+
+public class MinioRecord
+{
     public S3Entity? S3 { get; set; }
 }
 

@@ -74,6 +74,9 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ClaimSubmittedConsumer>();
 
+    x.AddConsumer<RequestDocumentsConsumer>()
+        .Endpoint(e => e.Name = "notification-service");
+
     x.UsingRabbitMq((context, cfg) =>
     {
         var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
