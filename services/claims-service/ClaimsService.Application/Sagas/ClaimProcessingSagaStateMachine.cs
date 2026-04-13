@@ -44,7 +44,7 @@ public class ClaimProcessingSagaStateMachine :
     {
         InstanceState(x => x.CurrentState);
 
-        SetCompletedWhenFinalized();
+        //SetCompletedWhenFinalized();
 
         Event(() => ClaimSubmitted, x =>
         {

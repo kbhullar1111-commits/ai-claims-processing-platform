@@ -73,8 +73,8 @@ builder.Services.AddMassTransit(x =>
 {
     x.SetKebabCaseEndpointNameFormatter();
 
-    x.AddConsumer<MarkClaimApprovedConsumer>(c => c.ExcludeFromConfigureEndpoints());
-    x.AddConsumer<MarkClaimRejectedConsumer>(c => c.ExcludeFromConfigureEndpoints());
+    x.AddConsumer<ClaimStatusConsumer>()
+        .ExcludeFromConfigureEndpoints();
 
     x.AddEntityFrameworkOutbox<ClaimsDbContext>(o =>
     {
@@ -111,8 +111,7 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("claims-service", e =>
         {
-            e.ConfigureConsumer<MarkClaimApprovedConsumer>(context);
-            e.ConfigureConsumer<MarkClaimRejectedConsumer>(context);
+            e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
 
         cfg.ConfigureEndpoints(context);
