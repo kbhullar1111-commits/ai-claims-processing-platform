@@ -65,11 +65,16 @@ builder.Services.AddHealthChecks()
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(SubmitClaimCommand).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(RejectClaimCommand).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(ApproveClaimCommand).Assembly);
 });
 
 builder.Services.AddMassTransit(x =>
 {
     x.SetKebabCaseEndpointNameFormatter();
+
+    x.AddConsumer<MarkClaimApprovedConsumer>(c => c.ExcludeFromConfigureEndpoints());
+    x.AddConsumer<MarkClaimRejectedConsumer>(c => c.ExcludeFromConfigureEndpoints());
 
     x.AddEntityFrameworkOutbox<ClaimsDbContext>(o =>
     {
@@ -102,6 +107,12 @@ builder.Services.AddMassTransit(x =>
         {
             h.Username(rabbitUsername);
             h.Password(rabbitPassword);
+        });
+
+        cfg.ReceiveEndpoint("claims-service", e =>
+        {
+            e.ConfigureConsumer<MarkClaimApprovedConsumer>(context);
+            e.ConfigureConsumer<MarkClaimRejectedConsumer>(context);
         });
 
         cfg.ConfigureEndpoints(context);

@@ -155,6 +155,56 @@ services:
     ports:
       - "5003:8080"
 
+  fraud-api:
+    container_name: fraud-api
+    build:
+      context: ../..
+      dockerfile: services/fraud-service/FraudService.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: claimsuser
+      RabbitMq__Password: claimspassword
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - claims-network
+    ports:
+      - "5005:8080"
+
+  payment-api:
+    container_name: payment-api
+    build:
+      context: ../..
+      dockerfile: services/payment-service/PaymentService.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: claimsuser
+      RabbitMq__Password: claimspassword
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - claims-network
+    ports:
+      - "5004:8080"
+
 networks:
   claims-network:
     name: claims-network

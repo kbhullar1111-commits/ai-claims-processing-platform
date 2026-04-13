@@ -1,0 +1,5 @@
+**
+!services/payment-service/PaymentService.API/**
+!building-blocks/contracts/BuildingBlocks.Contracts/**
+**/bin/**
+**/obj/**

@@ -1,0 +1,5 @@
+**
+!services/fraud-service/FraudService.API/**
+!building-blocks/contracts/BuildingBlocks.Contracts/**
+**/bin/**
+**/obj/**

@@ -20,6 +20,26 @@ public class ClaimProcessingSagaStateMachine :
     public Event<FraudCheckCompleted> FraudCheckCompleted { get; private set; } = null!;
     public Event<PaymentProcessed> PaymentProcessed { get; private set; } = null!;
 
+    /// <summary>
+    /// Initializes the ClaimProcessingSagaStateMachine that orchestrates the claim processing workflow.
+    /// 
+    /// The saga manages the following states and transitions:
+    /// 1. Initial: Waits for ClaimSubmitted event, stores claim data, requests required documents
+    /// 2. WaitingForDocuments: Collects uploaded documents until all required documents are received, then initiates fraud check
+    /// 3. FraudCheckRunning: Processes fraud check results - rejects if fraudulent, otherwise proceeds to payment
+    /// 4. PaymentProcessing: Handles payment processing - rejects if payment fails, finalizes if successful
+    /// 
+    /// Event Correlations:
+    /// - ClaimSubmitted: Correlates and selects saga instance by ClaimId
+    /// - DocumentUploaded: Correlates saga instance by ClaimId
+    /// - FraudCheckCompleted: Correlates saga instance by ClaimId
+    /// - PaymentProcessed: Correlates saga instance by ClaimId
+    /// 
+    /// Note regarding Finalize(): When calling Finalize() in the saga state machine,
+    /// you do NOT need to explicitly add a TransitionTo() before it. Finalize() implicitly
+    /// transitions the saga to the completed state and terminates the saga instance.
+    /// The SetCompletedWhenFinalized() configuration handles this automatically.
+    /// </summary>
     public ClaimProcessingSagaStateMachine()
     {
         InstanceState(x => x.CurrentState);
@@ -101,7 +121,11 @@ public class ClaimProcessingSagaStateMachine :
                 })
                 .IfElse(context => context.Message.RiskScore >= 0.8m
                                 || context.Message.IsFraudulent,
-                    thenBinder => thenBinder.TransitionTo(Rejected),
+                    thenBinder => thenBinder.Send(new Uri("queue:claims-service"),
+                                    ctx => new MarkClaimRejected(
+                                        ctx.Saga.ClaimId,
+                                        ctx.Message.Reason))
+                        .Finalize(),
                     elseBinder => elseBinder
                         .Send(new Uri("queue:payment-service"),
                             context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
@@ -112,10 +136,14 @@ public class ClaimProcessingSagaStateMachine :
         During(PaymentProcessing,
             When(PaymentProcessed)
                 .IfElse(context => !context.Message.Success,
-                    thenBinder => thenBinder
-                        .TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
+                    thenBinder => thenBinder.Send(new Uri("queue:claims-service"),
+                                    ctx => new MarkClaimRejected(
+                                        ctx.Saga.ClaimId,
+                                        "Payment processing failed"))
+                        //.TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
                         .Finalize(),
-                    elseBinder => elseBinder
+                    elseBinder => elseBinder.Send(new Uri("queue:claims-service"),
+                                    ctx => new MarkClaimApproved(ctx.Saga.ClaimId))
                         .Finalize()
                 )
         );
