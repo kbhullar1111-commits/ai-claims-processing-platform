@@ -8,7 +8,7 @@ Status Legend:
 - Planned: intended direction, not yet wired in the current workspace
 
 ## System Overview
-Financial Claims Processing Platform built as an event‑driven microservices architecture using .NET, MassTransit, and PostgreSQL.
+Financial Claims Processing Platform built as an event‑driven microservices architecture using .NET, RabbitMQ, PostgreSQL, and selective MassTransit usage.
 Long‑term goal: Azure‑native deployment with AI‑enabled services.
 
 ---
@@ -17,7 +17,7 @@ Long‑term goal: Azure‑native deployment with AI‑enabled services.
 Status: Implemented
 
 Decision:
-Services communicate primarily using asynchronous events via MassTransit and RabbitMQ.
+Services communicate primarily using asynchronous events over RabbitMQ.
 
 Reason:
 - Loose coupling
@@ -31,19 +31,29 @@ Alternatives Considered:
 Outcome:
 RabbitMQ acts as the event backbone.
 
+Current Implementation Note:
+- ClaimsService, NotificationService, and other internal service-to-service flows still use MassTransit over RabbitMQ
+- DocumentService now uses a custom RabbitMQ ingress consumer plus a custom database-backed outbox and publisher for document events
+- ClaimsService includes a bridge consumer so raw `DocumentUploaded` messages from DocumentService are converted back into the normal typed MassTransit contract before reaching the saga
+
 ---
 
 # ADR‑002 — Transactional Outbox Pattern
 Status: Implemented
 
 Decision:
-ClaimsService uses MassTransit Transactional Outbox.
+Use a transactional outbox pattern for reliable event publication.
 
 Reason:
 Guarantee atomicity between database write and event publish.
 
 Problem Solved:
 Prevent lost events when DB commit succeeds but message publish fails.
+
+Current Implementation Note:
+- ClaimsService uses the MassTransit Entity Framework outbox
+- DocumentService uses a custom `OutboxMessages` table, a background dispatcher, and a raw RabbitMQ publisher
+- In DocumentService, the `Document` row and outgoing `DocumentUploaded` outbox row are committed in the same database transaction
 
 ---
 
@@ -139,7 +149,7 @@ Future Observability:
 ---
 
 # ADR‑009 — Observability via OpenTelemetry
-Status: Planned
+Status: Implemented
 
 Decision:
 Adopt OpenTelemetry for distributed tracing.
@@ -154,7 +164,7 @@ Purpose:
 Trace request flows across microservices.
 
 Current Note:
-This is not yet wired in the current workspace. No OpenTelemetry or Jaeger configuration is present in the API startup code or local Docker stack.
+OpenTelemetry is wired in the API startup code across the active services, with OTLP export and Prometheus scraping enabled in local development.
 
 ---
 

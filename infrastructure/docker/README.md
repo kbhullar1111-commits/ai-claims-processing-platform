@@ -40,7 +40,7 @@ The base compose file starts these steady-state runtime containers:
 
 5. `docker-compose.migrations.yml`
 - Purpose: one-shot EF Core migrator containers for schema updates.
-- Current use: runs claims and notification migrations on demand without placing migrator jobs in the normal runtime stack.
+- Current use: runs claims, notification, and document migrations on demand without placing migrator jobs in the normal runtime stack.
 
 ## Volume
 
@@ -99,12 +99,13 @@ If you need to apply EF Core migrations:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator
 docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator
+docker compose -f docker-compose.yml -f docker-compose.migrations.yml up document-migrator
 ```
 
 You can remove the stopped migrator containers afterwards:
 
 ```bash
-docker compose rm -f claims-migrator notification-migrator
+docker compose rm -f claims-migrator notification-migrator document-migrator
 ```
 
 This keeps migration jobs completely out of the base compose file.
@@ -225,11 +226,34 @@ Runs the claims service migration container on demand.
 20. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator`
 Runs the notification service migration container on demand.
 
-21. `docker compose rm -f claims-migrator notification-migrator`
+21. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up document-migrator`
+Runs the document service migration container on demand.
+
+22. `docker compose rm -f claims-migrator notification-migrator document-migrator`
 Removes the stopped migration containers after they finish.
 
-22. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml config`
+23. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml config`
 Prints and validates the merged runtime plus migrations configuration.
 
-23. `commands\migrate.cmd`
-Runs claims and notification migrations sequentially using the standard compose overlays.
+24. `commands\migrate.cmd`
+Runs claims, notification, and document migrations sequentially using the standard compose overlays.
+
+25. `commands\check-outbox.cmd`
+Queries the document and claims databases for business rows, saga rows, and MassTransit inbox/outbox row counts.
+
+## Outbox Verification
+
+Use this sequence when you want to prove the EF bus outbox is persisting messages before broker delivery.
+
+1. Start the compose stack and make sure migrations are applied.
+2. Run `commands\check-outbox.cmd` to capture a baseline.
+3. Stop RabbitMQ with `docker compose stop rabbitmq`.
+4. Trigger one publish path:
+  submit a claim through `Workspace.APIs.http`, or upload a document through the document flow.
+5. Run `commands\check-outbox.cmd` again.
+6. Confirm the business row was committed and `OutboxMessage` contains queued rows while RabbitMQ is down.
+7. Start RabbitMQ with `docker compose start rabbitmq`.
+8. Run `commands\check-outbox.cmd` again.
+9. Confirm the queued outbox rows drained after broker connectivity returned.
+
+If RabbitMQ stays up during the test, `OutboxMessage` may return to `0` very quickly because MassTransit deletes delivered outbox rows after successful delivery.

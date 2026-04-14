@@ -4,6 +4,7 @@ using ClaimsService.Application.Interfaces;
 using ClaimsService.Infrastructure.Repositories;
 using ClaimsService.Infrastructure.Observability.Metrics;
 using ClaimsService.Infrastructure.Observability.Constants;
+using ClaimsService.Infrastructure.Messaging;
 using MediatR;
 using ClaimsService.Application;
 using ClaimsService.Application.Commands;
@@ -76,6 +77,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ClaimStatusConsumer>()
         .ExcludeFromConfigureEndpoints();
 
+    x.AddConsumer<DocumentUploadedBridgeConsumer>()
+        .ExcludeFromConfigureEndpoints();
+
     x.AddEntityFrameworkOutbox<ClaimsDbContext>(o =>
     {
         o.UsePostgres();
@@ -112,6 +116,15 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("claims-service", e =>
         {
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("document-uploaded-bridge", e =>
+        {
+            // Only the bridge endpoint understands the raw publisher contract.
+            // The saga continues to consume the internal typed event contract.
+            e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
+            e.Bind("document-uploaded");
+            e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
         });
 
         cfg.ConfigureEndpoints(context);

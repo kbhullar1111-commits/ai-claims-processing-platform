@@ -2,7 +2,6 @@ using DocumentService.Application.Interfaces;
 using DocumentService.Application.Commands;
 using DocumentService.Infrastructure.Storage;
 using DocumentService.Infrastructure.Messaging;
-using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -53,9 +52,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.Configure<ObjectStorageOptions>(
     builder.Configuration.GetSection("ObjectStorage"));
+builder.Services.Configure<RabbitMqOptions>(
+    builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 
 builder.Services.AddHealthChecks()
-    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<DocumentDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -94,32 +96,13 @@ builder.Services.AddScoped<IObjectStorage>(sp =>
     return new MinioObjectStorage(presignClient, options.Bucket);
 });
 
-builder.Services.AddMassTransit(x =>
-{
-    x.AddConsumer<ObjectCreatedConsumer>();
+// The custom messaging flow is split into two background services:
+// 1. ObjectCreatedConsumer ingests raw MinIO notifications and writes document + outbox rows.
+// 2. OutboxDispatcher reads pending outbox rows and publishes them to RabbitMQ.
+builder.Services.AddHostedService<ObjectCreatedConsumer>();
+builder.Services.AddHostedService<OutboxDispatcher>();
 
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
-        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
-
-        cfg.Host(rabbitHost, "/", h =>
-        {
-            h.Username(rabbitUsername);
-            h.Password(rabbitPassword);
-        });
-
-        cfg.ReceiveEndpoint("minio-object-created", e =>
-        {
-            e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
-            e.Bind("minio");   // IMPORTANT
-            e.ConfigureConsumer<ObjectCreatedConsumer>(context);
-        });
-
-        cfg.ConfigureEndpoints(context);
-    });
-});
+builder.Services.AddSingleton<RabbitPublisher>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 
@@ -136,7 +119,6 @@ builder.Services.AddOpenTelemetry()
                     !httpContext.Request.Path.StartsWithSegments("/ready");
             })
             .AddHttpClientInstrumentation()
-            .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService("DocumentService"))
@@ -161,10 +143,14 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<IOptions<ObjectStorageOptions>>()
         .Value;
 
+    var rabbitMqOptions = scope.ServiceProvider
+        .GetRequiredService<IOptions<RabbitMqOptions>>()
+        .Value;
+
     await MinioBucketInitializer.EnsureBucketConfigured(
         client,
         options.Bucket,
-        "arn:minio:sqs::PRIMARY:amqp");
+        rabbitMqOptions.MinioNotificationArn);
 }
 
 if (app.Environment.IsDevelopment())
@@ -190,4 +176,24 @@ app.MapControllers();
 app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
+
+internal sealed class DocumentDatabaseHealthCheck(DocumentDbContext dbContext) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+            return canConnect
+                ? HealthCheckResult.Healthy("Postgres is reachable.")
+                : HealthCheckResult.Unhealthy("Postgres is not reachable.");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Postgres health check failed.", ex);
+        }
+    }
+}
 

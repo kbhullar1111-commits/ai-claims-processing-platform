@@ -2,6 +2,16 @@
 @notificationHost = http://localhost:5002
 @documentHost = http://localhost:5003
 
+### Outbox verification flow
+### 1. Run infrastructure/docker/commands/check-outbox.cmd to capture the baseline.
+### 2. Stop RabbitMQ: docker compose -f infrastructure/docker/docker-compose.yml stop rabbitmq
+### 3. Execute one of the requests below.
+### 4. Run infrastructure/docker/commands/check-outbox.cmd again.
+###    Expected: business data is committed and OutboxMessage rows remain queued while RabbitMQ is down.
+### 5. Start RabbitMQ: docker compose -f infrastructure/docker/docker-compose.yml start rabbitmq
+### 6. Run infrastructure/docker/commands/check-outbox.cmd again.
+###    Expected: OutboxMessage rows drain after broker connectivity is restored.
+
 ### =====================
 ### Claims Service
 ### =====================
@@ -14,7 +24,7 @@ Accept: application/json
 {
   "customerId": "d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10",
   "policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
-  "claimAmount": 1250.75
+  "claimAmount": 5000.20
 }
 
 ### Claims health
@@ -48,7 +58,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "f22a3caf-02f3-49e1-ad8b-878ce42a8fad",
+  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
   "documentType": "ID Proof",
   "fileName": "id-proof.pdf"
 }
@@ -68,7 +78,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "f22a3caf-02f3-49e1-ad8b-878ce42a8fad",
+  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
   "documentType": "Accident Photos",
   "fileName": "accident-photos.pdf"
 }
@@ -88,7 +98,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "f22a3caf-02f3-49e1-ad8b-878ce42a8fad",
+  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
   "documentType": "Police Report",
   "fileName": "police-report.pdf"
 }

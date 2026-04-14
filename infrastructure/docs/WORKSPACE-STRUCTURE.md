@@ -1,170 +1,163 @@
 # Workspace Folder Structure
 
-Generated: 2026-04-07
+Generated: 2026-04-14
 
-This is a detailed, curated view of the workspace. It focuses on solution structure,
-runtime assets, and implementation folders that matter architecturally. Generated
-artifacts such as most `bin/` and `obj/` directories are intentionally omitted.
+This is a curated view of the current workspace. It highlights solution files,
+runtime assets, and architecturally relevant folders. Generated artifacts such as
+most `bin/`, `obj/`, and transient `logs/` directories are intentionally omitted.
 
 ```text
 .
+|-- accident-photos.pdf
 |-- ai-claims-processing-platform.sln
 |-- building-blocks/
 |   |-- contracts/
 |   |   `-- BuildingBlocks.Contracts/
 |   |       |-- BuildingBlocks.Contracts.csproj
 |   |       |-- Claims/
-|   |       |   `-- ClaimSubmitted.cs
 |   |       |-- Documents/
-|   |       |   `-- DocumentsUploaded.cs
 |   |       |-- Fraud/
-|   |       |   `-- FraudCheckCompleted.cs
+|   |       |-- Payment/
 |   |       `-- Payments/
-|   |           `-- PaymentCompleted.cs
 |   `-- messaging/
+|-- id-proof.pdf
 |-- infrastructure/
 |   |-- docker/
-|   |   |-- docker-compose.yml
 |   |   |-- docker-compose.migrations.yml
 |   |   |-- docker-compose.observability.yml
+|   |   |-- docker-compose.yml
+|   |   |-- prometheus.yml
+|   |   |-- README.md
 |   |   |-- commands/
+|   |   |   |-- check-outbox.cmd
 |   |   |   |-- migrate.cmd
 |   |   |   |-- start-observability.cmd
 |   |   |   |-- start.cmd
 |   |   |   `-- stop.cmd
-|   |   |-- initdb/
-|   |   |   `-- 01-create-databases.sql
-|   |   |-- prometheus.yml
-|   |   `-- README.md
+|   |   `-- initdb/
+|   |       `-- 01-create-databases.sql
 |   `-- docs/
 |       |-- ai_claims_platform_architecture_decisions.md
 |       |-- ARCHITECTURE-REVIEW.md
-|       |-- WORKSPACE-STRUCTURE.md
-|       `-- Workflow-diagram.md
-`-- services/
-    |-- claims-service/
-    |   |-- ClaimsService.slnx
-    |   |-- ClaimsService.API/
-    |   |   |-- ClaimsService.API.csproj
-    |   |   |-- ClaimsService.API.http
-    |   |   |-- appsettings.Development.json
-    |   |   |-- appsettings.json
-    |   |   |-- Controllers/
-    |   |   |   `-- ClaimsController.cs
-    |   |   |-- Dockerfile
-    |   |   |-- Dockerfile.dockerignore
-    |   |   |-- Program.cs
-    |   |   `-- Properties/
-    |   |-- ClaimsService.Application/
-    |   |   |-- ClaimsService.Application.csproj
-    |   |   |-- Commands/
-    |   |   |   `-- SubmitClaimCommand.cs
-    |   |   |-- Handlers/
-    |   |   |   `-- SubmitClaimCommandHandler.cs
-    |   |   |-- Interfaces/
-    |   |   |   |-- IClaimRepository.cs
-    |   |   |   |-- IEventPublisher.cs
-    |   |   |   `-- IUnitOfWork.cs
-    |   |   `-- Sagas/
-    |   |       |-- ClaimProcessingSagaDefinition.cs
-    |   |       |-- ClaimProcessingSagaState.cs
-    |   |       `-- ClaimProcessingSagaStateMachine.cs
-    |   |-- ClaimsService.Domain/
-    |   |   |-- ClaimsService.Domain.csproj
-    |   |   |-- Entities/
-    |   |   |   `-- Claim.cs
-    |   |   `-- Enums/
-    |   |       `-- ClaimStatus.cs
-    |   `-- ClaimsService.Infrastructure/
-    |       |-- ClaimsService.Infrastructure.csproj
-    |       |-- Messaging/
-    |       |   `-- EventPublisher.cs
-    |       |-- Persistance/
-    |       |   |-- ClaimsDbContext.cs
-    |       |   |-- Configurations/
-    |       |   |   `-- ClaimConfiguration.cs
-    |       |   |-- EfUnitOfWork.cs
-    |       |   `-- Migrations/
-    |       |       |-- 20260308083143_InitialFullSchema.cs
-    |       |       `-- ClaimsDbContextModelSnapshot.cs
-    |       `-- Repositories/
-    |           `-- ClaimRepository.cs
-    |-- document-service/
-    |   |-- DocumentService.slnx
-    |   |-- DocumentService.API/
-    |   |   |-- appsettings.Development.json
-    |   |   |-- appsettings.json
-    |   |   |-- DocumentService.API.csproj
-    |   |   |-- DocumentService.API.http
-    |   |   |-- Dockerfile
-    |   |   |-- Dockerfile.dockerignore
-    |   |   |-- Program.cs
-    |   |   `-- Properties/
-    |   |-- DocumentService.Application/
-    |   |   |-- DocumentService.Application.csproj
-    |   |   |-- Commands/
-    |   |   |-- DTOs/
-    |   |   |-- Interfaces/
-    |   |   `-- Queries/
-    |   |-- DocumentService.Domain/
-    |   |   |-- DocumentService.Domain.csproj
-    |   |   |-- Entities/
-    |   |   |-- Events/
-    |   |   `-- ValueObjects/
-    |   `-- DocumentService.Infrastructure/
-    |       |-- DocumentService.Infrastructure.csproj
-    |       |-- Messaging/
-    |       |-- Persistence/
-    |       |-- Repository/
-    |       `-- Storage/
-    |-- fraud-service/
-    `-- notification-service/
-        |-- NotificationService.slnx
-        |-- NotificationService.API/
-        |   |-- NotificationService.API.csproj
-        |   |-- NotificationService.API.http
-        |   |-- appsettings.Development.json
-        |   |-- appsettings.json
-        |   |-- Dockerfile
-        |   |   |-- Dockerfile.dockerignore
-        |   |-- logs/
-        |   |-- Program.cs
-        |   `-- Properties/
-        |-- NotificationService.Application/
-        |   |-- NotificationService.Application.csproj
-        |   |-- Commands/
-        |   |   `-- CreateNotification/
-        |   |       |-- CreateNotificationCommand.cs
-        |   |       `-- CreateNotificationCommandHandler.cs
-        |   `-- Interfaces/
-        |       |-- INotificationRepository.cs
-        |       `-- IUnitOfWork.cs
-        |-- NotificationService.Domain/
-        |   |-- NotificationService.Domain.csproj
-        |   |-- Entities/
-        |   |   `-- Notification.cs
-        |   `-- Enums/
-        |       |-- NotificationChannel.cs
-        |       `-- NotificationStatus.cs
-        `-- NotificationService.Infrastructure/
-            |-- NotificationService.Infrastructure.csproj
-            |-- Messaging/
-            |   `-- Consumers/
-            |       `-- ClaimSubmittedConsumer.cs
-            |-- Persistence/
-            |   |-- NotificationDbContext.cs
-            |   |-- Configurations/
-            |   |   `-- NotificationConfiguration.cs
-            |   |-- EfUnitOfWork.cs
-            |   |-- Migrations/
-            |   |   |-- 20260311132901_InitialCreate.cs
-            |   |   `-- NotificationDbContextModelSnapshot.cs
-            |   `-- Repositories/
-            |       `-- NotificationRepository.cs
-            |-- Senders/
-            |   |-- EmailSender.cs
-            |   `-- INotificationSender.cs
-            `-- Workers/
-                |-- NotificationDispatcher.cs
-                `-- NotificationDispatcherOptions.cs
+|       |-- Workflow-diagram.md
+|       `-- WORKSPACE-STRUCTURE.md
+|-- police-report.pdf
+|-- services/
+|   |-- claims-service/
+|   |   |-- ClaimsService.slnx
+|   |   |-- ClaimsService.API/
+|   |   |   |-- appsettings.Development.json
+|   |   |   |-- appsettings.json
+|   |   |   |-- ClaimsService.API.csproj
+|   |   |   |-- ClaimsService.API.http
+|   |   |   |-- Controllers/
+|   |   |   |-- Dockerfile
+|   |   |   |-- Dockerfile.dockerignore
+|   |   |   |-- Program.cs
+|   |   |   `-- Properties/
+|   |   |-- ClaimsService.Application/
+|   |   |   |-- ClaimsService.Application.csproj
+|   |   |   |-- Commands/
+|   |   |   |-- Handlers/
+|   |   |   |-- Interfaces/
+|   |   |   `-- Sagas/
+|   |   |-- ClaimsService.Domain/
+|   |   |   |-- ClaimsService.Domain.csproj
+|   |   |   |-- Entities/
+|   |   |   `-- Enums/
+|   |   `-- ClaimsService.Infrastructure/
+|   |       |-- ClaimsService.Infrastructure.csproj
+|   |       |-- Messaging/
+|   |       |   |-- ClaimStatusConsumer.cs
+|   |       |   |-- DocumentUploadedBridgeConsumer.cs
+|   |       |   |-- DocumentUploadedRawMessage.cs
+|   |       |   `-- EventPublisher.cs
+|   |       |-- Observability/
+|   |       |-- Persistance/
+|   |       `-- Repositories/
+|   |-- document-service/
+|   |   |-- DocumentService.slnx
+|   |   |-- DocumentService.API/
+|   |   |   |-- appsettings.Development.json
+|   |   |   |-- appsettings.json
+|   |   |   |-- Controllers/
+|   |   |   |-- DocumentService.API.csproj
+|   |   |   |-- DocumentService.API.http
+|   |   |   |-- Dockerfile
+|   |   |   |-- Dockerfile.dockerignore
+|   |   |   |-- Program.cs
+|   |   |   |-- Properties/
+|   |   |   `-- RequestModels/
+|   |   |-- DocumentService.Application/
+|   |   |   |-- Commands/
+|   |   |   |-- DocumentService.Application.csproj
+|   |   |   |-- DTOs/
+|   |   |   |-- Interfaces/
+|   |   |   `-- Queries/
+|   |   |-- DocumentService.Domain/
+|   |   |   |-- DocumentService.Domain.csproj
+|   |   |   |-- Entities/
+|   |   |   |-- Events/
+|   |   |   `-- ValueObjects/
+|   |   `-- DocumentService.Infrastructure/
+|   |       |-- DocumentService.Infrastructure.csproj
+|   |       |-- Messaging/
+|   |       |   |-- MinioObjectCreated.cs
+|   |       |   |-- ObjectCreatedConsumer.cs
+|   |       |   |-- OutboxDispatcher.cs
+|   |       |   |-- RabbitMqOptions.cs
+|   |       |   `-- RabbitPublisher.cs
+|   |       |-- Persistence/
+|   |       |   |-- DocumentDbContext.cs
+|   |       |   `-- InfrastructureEntites/
+|   |       |       `-- OutboxMessage.cs
+|   |       `-- Storage/
+|   |-- fraud-service/
+|   |   `-- FraudService.API/
+|   |       |-- appsettings.Development.json
+|   |       |-- appsettings.json
+|   |       |-- Dockerfile
+|   |       |-- Dockerfile.dockerignore
+|   |       |-- FraudService.API.csproj
+|   |       |-- FraudService.API.http
+|   |       |-- Program.cs
+|   |       |-- Properties/
+|   |       `-- RunFraudCheckConsumer.cs
+|   |-- notification-service/
+|   |   |-- NotificationService.slnx
+|   |   |-- NotificationService.API/
+|   |   |   |-- appsettings.Development.json
+|   |   |   |-- appsettings.json
+|   |   |   |-- Dockerfile
+|   |   |   |-- Dockerfile.dockerignore
+|   |   |   |-- NotificationService.API.csproj
+|   |   |   |-- NotificationService.API.http
+|   |   |   |-- Program.cs
+|   |   |   `-- Properties/
+|   |   |-- NotificationService.Application/
+|   |   |   |-- Commands/
+|   |   |   |-- Interfaces/
+|   |   |   `-- NotificationService.Application.csproj
+|   |   |-- NotificationService.Domain/
+|   |   |   |-- Entities/
+|   |   |   |-- Enums/
+|   |   |   `-- NotificationService.Domain.csproj
+|   |   `-- NotificationService.Infrastructure/
+|   |       |-- Messaging/
+|   |       |-- NotificationService.Infrastructure.csproj
+|   |       |-- Persistence/
+|   |       |-- Senders/
+|   |       `-- Workers/
+|   `-- payment-service/
+|       `-- PaymentService.API/
+|           |-- appsettings.Development.json
+|           |-- appsettings.json
+|           |-- Dockerfile
+|           |-- Dockerfile.dockerignore
+|           |-- PaymentService.API.csproj
+|           |-- PaymentService.API.http
+|           |-- ProcessPaymentConsumer.cs
+|           |-- Program.cs
+|           `-- Properties/
+`-- Workspace.APIs.http
 ```

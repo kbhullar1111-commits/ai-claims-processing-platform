@@ -50,3 +50,29 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  document-migrator:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    container_name: document-migrator
+    networks:
+      - claims-network
+    working_dir: /src
+    volumes:
+      - ../..:/src
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=documentdb;Username=postgres;Password=postgres
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: claimsuser
+      RabbitMq__Password: claimspassword
+    command: >-
+      /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
+      && export PATH=$$PATH:/root/.dotnet/tools
+      && dotnet restore services/document-service/DocumentService.API/DocumentService.API.csproj --force
+      && dotnet restore services/document-service/DocumentService.Infrastructure/DocumentService.Infrastructure.csproj --force
+      && dotnet ef database update
+      --project services/document-service/DocumentService.Infrastructure/DocumentService.Infrastructure.csproj
+      --startup-project services/document-service/DocumentService.API/DocumentService.API.csproj"
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -44,7 +44,7 @@ public class ClaimProcessingSagaStateMachine :
     {
         InstanceState(x => x.CurrentState);
 
-        //SetCompletedWhenFinalized();
+        SetCompletedWhenFinalized();
 
         Event(() => ClaimSubmitted, x =>
         {
@@ -104,6 +104,8 @@ public class ClaimProcessingSagaStateMachine :
                         context.Saga.RequiredDocuments.All(doc =>
                             context.Saga.UploadedDocuments.Contains(doc)),
                     binder => binder
+                        .Send(new Uri("queue:claims-service"), context =>
+                            new MarkClaimUnderReview(context.Saga.ClaimId))
                         .Send(new Uri("queue:fraud-service"), context =>
                             new RunFraudCheck(context.Saga.ClaimId))
                         .TransitionTo(FraudCheckRunning)

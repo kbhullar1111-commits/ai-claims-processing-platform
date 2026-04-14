@@ -24,4 +24,15 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
+echo Applying document database migrations...
+set ConnectionStrings__Postgres=Host=localhost;Port=5432;Database=documentdb;Username=postgres;Password=postgres
+dotnet ef database update ^
+  --project services/document-service/DocumentService.Infrastructure/DocumentService.Infrastructure.csproj ^
+  --startup-project services/document-service/DocumentService.API/DocumentService.API.csproj ^
+  --context DocumentDbContext
+if %errorlevel% neq 0 (
+    echo ERROR: Document migration failed.
+    exit /b %errorlevel%
+)
+
 echo All migrations applied successfully.

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DocumentService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DocumentDbContext))]
-    partial class DocumentDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414141154_AddCustomOutbox")]
+    partial class AddCustomOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
