@@ -63,6 +63,9 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<ClaimsDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
+builder.Services.Configure<ClaimProcessingSagaRoutingOptions>(
+    builder.Configuration.GetSection("Messaging:Queues"));
+
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(SubmitClaimCommand).Assembly);
@@ -106,6 +109,7 @@ builder.Services.AddMassTransit(x =>
         var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
         var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
         var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+        var claimsServiceQueue = builder.Configuration["Messaging:Queues:ClaimsServiceQueue"] ?? "claims-service";
 
         cfg.Host(rabbitHost, "/", h =>
         {
@@ -113,17 +117,20 @@ builder.Services.AddMassTransit(x =>
             h.Password(rabbitPassword);
         });
 
-        cfg.ReceiveEndpoint("claims-service", e =>
+        cfg.ReceiveEndpoint(claimsServiceQueue, e =>
         {
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
 
-        cfg.ReceiveEndpoint("document-uploaded-bridge", e =>
+        var documentUploadedExchange = builder.Configuration["Messaging:DocumentUploaded:ExchangeName"] ?? "document-uploaded";
+        var documentUploadedQueue = builder.Configuration["Messaging:DocumentUploaded:QueueName"] ?? "document-uploaded-bridge";
+
+        cfg.ReceiveEndpoint(documentUploadedQueue, e =>
         {
             // Only the bridge endpoint understands the raw publisher contract.
             // The saga continues to consume the internal typed event contract.
             e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
-            e.Bind("document-uploaded");
+            e.Bind(documentUploadedExchange);
             e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
         });
 

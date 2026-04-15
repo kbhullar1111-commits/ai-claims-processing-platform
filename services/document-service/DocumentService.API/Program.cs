@@ -14,6 +14,7 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -147,10 +148,36 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<IOptions<RabbitMqOptions>>()
         .Value;
 
-    await MinioBucketInitializer.EnsureBucketConfigured(
-        client,
-        options.Bucket,
-        rabbitMqOptions.MinioNotificationArn);
+    var logger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("DocumentService.MinioStartup");
+
+    const int maxAttempts = 6;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await MinioBucketInitializer.EnsureBucketConfigured(
+                client,
+                options.Bucket,
+                rabbitMqOptions.MinioNotificationArn);
+            break;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex.InnerException is HttpRequestException)
+        {
+            if (attempt == maxAttempts)
+                throw;
+
+            logger.LogWarning(
+                ex,
+                "MinIO bucket initialization failed on attempt {Attempt}/{MaxAttempts}. Retrying...",
+                attempt,
+                maxAttempts);
+
+            await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -169,7 +196,10 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapControllers();
 

@@ -31,6 +31,11 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   minio:
     image: minio/minio
@@ -48,7 +53,7 @@ services:
       MINIO_NOTIFY_AMQP_DURABLE_PRIMARY: "on"
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -81,8 +86,6 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
-      minio:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
@@ -113,7 +116,9 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
       interval: 10s
@@ -143,7 +148,9 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
       interval: 10s
@@ -168,7 +175,7 @@ services:
       RabbitMq__Password: claimspassword
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
       interval: 10s
@@ -193,7 +200,7 @@ services:
       RabbitMq__Password: claimspassword
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ready || exit 1"]
       interval: 10s

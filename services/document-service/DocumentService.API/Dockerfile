@@ -21,6 +21,9 @@ RUN dotnet publish "DocumentService.API.csproj" -c Release -o /app/publish /p:Us
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 # Use the smaller runtime image for the container that will actually run.
 WORKDIR /app
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+	&& rm -rf /var/lib/apt/lists/*
 # Copy only the published output from the build stage into the runtime stage.
 COPY --from=build /app/publish .
 

@@ -32,10 +32,12 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
 
+var fraudServiceQueue = builder.Configuration["Messaging:Queues:FraudServiceQueue"] ?? "fraud-service";
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<RunFraudCheckConsumer>()
-        .Endpoint(e => e.Name = "fraud-service");
+        .Endpoint(e => e.Name = fraudServiceQueue);
 
     x.UsingRabbitMq((context, cfg) =>
     {

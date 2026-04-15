@@ -3,12 +3,18 @@ using BuildingBlocks.Contracts.Claims;
 using BuildingBlocks.Contracts.Documents;
 using BuildingBlocks.Contracts.Fraud;
 using BuildingBlocks.Contracts.Payment;
+using Microsoft.Extensions.Options;
 
 namespace ClaimsService.Application.Sagas;
 
 public class ClaimProcessingSagaStateMachine :
     MassTransitStateMachine<ClaimProcessingSagaState>
 {
+    private readonly Uri _claimsServiceQueueUri;
+    private readonly Uri _notificationServiceQueueUri;
+    private readonly Uri _fraudServiceQueueUri;
+    private readonly Uri _paymentServiceQueueUri;
+
     public State WaitingForDocuments { get; private set; } = null!;
     public State FraudCheckRunning { get; private set; } = null!;
     public State Rejected { get; private set; } = null!;
@@ -40,8 +46,14 @@ public class ClaimProcessingSagaStateMachine :
     /// transitions the saga to the completed state and terminates the saga instance.
     /// The SetCompletedWhenFinalized() configuration handles this automatically.
     /// </summary>
-    public ClaimProcessingSagaStateMachine()
+    public ClaimProcessingSagaStateMachine(IOptions<ClaimProcessingSagaRoutingOptions> routingOptions)
     {
+        var routes = routingOptions.Value;
+        _claimsServiceQueueUri = new Uri($"queue:{routes.ClaimsServiceQueue}");
+        _notificationServiceQueueUri = new Uri($"queue:{routes.NotificationServiceQueue}");
+        _fraudServiceQueueUri = new Uri($"queue:{routes.FraudServiceQueue}");
+        _paymentServiceQueueUri = new Uri($"queue:{routes.PaymentServiceQueue}");
+
         InstanceState(x => x.CurrentState);
 
         SetCompletedWhenFinalized();
@@ -78,7 +90,7 @@ public class ClaimProcessingSagaStateMachine :
                     context.Saga.RequiredDocuments =
                         context.Message.RequiredDocuments.ToList();
                 })
-                .Send(new Uri("queue:notification-service"), context =>
+                .Send(_notificationServiceQueueUri, context =>
                     new RequestDocuments(
                         context.Message.ClaimId,
                         context.Message.CustomerId,
@@ -104,9 +116,9 @@ public class ClaimProcessingSagaStateMachine :
                         context.Saga.RequiredDocuments.All(doc =>
                             context.Saga.UploadedDocuments.Contains(doc)),
                     binder => binder
-                        .Send(new Uri("queue:claims-service"), context =>
+                        .Send(_claimsServiceQueueUri, context =>
                             new MarkClaimUnderReview(context.Saga.ClaimId))
-                        .Send(new Uri("queue:fraud-service"), context =>
+                        .Send(_fraudServiceQueueUri, context =>
                             new RunFraudCheck(context.Saga.ClaimId))
                         .TransitionTo(FraudCheckRunning)
                 )
@@ -123,13 +135,13 @@ public class ClaimProcessingSagaStateMachine :
                 })
                 .IfElse(context => context.Message.RiskScore >= 0.8m
                                 || context.Message.IsFraudulent,
-                    thenBinder => thenBinder.Send(new Uri("queue:claims-service"),
+                    thenBinder => thenBinder.Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimRejected(
                                         ctx.Saga.ClaimId,
                                         ctx.Message.Reason))
                         .Finalize(),
                     elseBinder => elseBinder
-                        .Send(new Uri("queue:payment-service"),
+                        .Send(_paymentServiceQueueUri,
                             context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
                         .TransitionTo(PaymentProcessing)
                 )
@@ -138,13 +150,13 @@ public class ClaimProcessingSagaStateMachine :
         During(PaymentProcessing,
             When(PaymentProcessed)
                 .IfElse(context => !context.Message.Success,
-                    thenBinder => thenBinder.Send(new Uri("queue:claims-service"),
+                    thenBinder => thenBinder.Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimRejected(
                                         ctx.Saga.ClaimId,
                                         "Payment processing failed"))
                         //.TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
                         .Finalize(),
-                    elseBinder => elseBinder.Send(new Uri("queue:claims-service"),
+                    elseBinder => elseBinder.Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimApproved(ctx.Saga.ClaimId))
                         .Finalize()
                 )

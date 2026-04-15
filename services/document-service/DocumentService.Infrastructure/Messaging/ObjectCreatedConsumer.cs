@@ -45,12 +45,54 @@ public class ObjectCreatedConsumer : BackgroundService
         _connection = factory.CreateConnection();
         _channel = _connection.CreateModel();
 
+        // Set up a dead-letter exchange and queue to handle messages that fail processing repeatedly.
+        _channel.ExchangeDeclare(_options.MinioDeadLetterExchangeName, ExchangeType.Direct, durable: true);
+
+        _channel.QueueDeclare(_options.MinioObjectCreatedDeadLetterQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false);
+
+        _channel.QueueBind(
+            _options.MinioObjectCreatedDeadLetterQueueName,
+            _options.MinioDeadLetterExchangeName,
+            routingKey: _options.MinioDeadLetterRoutingKey);
+
+        // Retry topology: failed messages are published to the retry exchange with
+        // a per-message TTL. After TTL expires, RabbitMQ dead-letters them back to
+        // the main queue for another processing attempt.
+        _channel.ExchangeDeclare(_options.MinioRetryExchangeName, ExchangeType.Direct, durable: true);
+
+        var retryQueueArgs = new Dictionary<string, object>
+        {
+            { "x-dead-letter-exchange", string.Empty },
+            { "x-dead-letter-routing-key", _options.MinioObjectCreatedQueueName }
+        };
+
+        _channel.QueueDeclare(
+            _options.MinioObjectCreatedRetryQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: retryQueueArgs);
+
+        _channel.QueueBind(
+            _options.MinioObjectCreatedRetryQueueName,
+            _options.MinioRetryExchangeName,
+            routingKey: _options.MinioRetryRoutingKey);
+
+        var args = new Dictionary<string, object>
+        {
+            { "x-dead-letter-exchange", _options.MinioDeadLetterExchangeName },
+            { "x-dead-letter-routing-key", _options.MinioDeadLetterRoutingKey }
+        };
+
         // MinIO emits object-created notifications to RabbitMQ. This service owns
         // a dedicated queue that receives those raw notifications.
         _channel.ExchangeDeclare(_options.MinioExchangeName, ExchangeType.Fanout, durable: true);
-        _channel.QueueDeclare(_options.MinioObjectCreatedQueueName, durable: true, exclusive: false, autoDelete: false);
+        _channel.QueueDeclare(_options.MinioObjectCreatedQueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
         _channel.QueueBind(_options.MinioObjectCreatedQueueName, _options.MinioExchangeName, routingKey: string.Empty);
-
+        
         // Process one message at a time so document creation and outbox persistence
         // stay simple and easier to reason about.
         _channel.BasicQos(0, 1, false);
@@ -82,6 +124,9 @@ public class ObjectCreatedConsumer : BackgroundService
 
         try
         {
+            //if (_options.ThrowTestException)
+                //throw new InvalidOperationException("Forced test exception from ObjectCreatedConsumer to validate retry and DLQ behavior.");
+
             using var scope = _scopeFactory.CreateScope();
 
             var db = scope.ServiceProvider.GetRequiredService<DocumentDbContext>();
@@ -104,6 +149,10 @@ public class ObjectCreatedConsumer : BackgroundService
 
             if (exists)
             {
+                _logger.LogInformation("Duplicate object key received: {Key}", document.ObjectKey);
+
+                // OPTIONAL: still publish event if you want saga to re-evaluate
+                // (depends on your design choice)
                 _channel.BasicAck(eventArgs.DeliveryTag, false);
                 return;
             }
@@ -132,10 +181,88 @@ public class ObjectCreatedConsumer : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to persist MinIO object-created event to the document outbox.");
-            // Requeue so the notification can be retried after transient failures.
-            _channel.BasicNack(eventArgs.DeliveryTag, false, requeue: true);
+            _logger.LogError(ex, "Failed processing message");
+
+            try
+            {
+                var retryCount = GetRetryCount(eventArgs.BasicProperties?.Headers);
+
+                if (retryCount >= _options.MaxRetryAttempts)
+                {
+                    _logger.LogWarning(
+                        "Moving message to DLQ after max retries. DeliveryTag={DeliveryTag}, RetryCount={RetryCount}",
+                        eventArgs.DeliveryTag,
+                        retryCount);
+
+                    _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+                    return;
+                }
+
+                var nextRetryCount = retryCount + 1;
+                var delayMs = GetRetryDelayMilliseconds(retryCount);
+
+                var properties = _channel.CreateBasicProperties();
+                properties.Persistent = true;
+                properties.Expiration = delayMs.ToString();
+                properties.Headers = new Dictionary<string, object>
+                {
+                    { "x-retry-count", nextRetryCount }
+                };
+
+                _channel.BasicPublish(
+                    exchange: _options.MinioRetryExchangeName,
+                    routingKey: _options.MinioRetryRoutingKey,
+                    basicProperties: properties,
+                    body: eventArgs.Body);
+
+                _logger.LogWarning(
+                    "Scheduled retry for message. DeliveryTag={DeliveryTag}, RetryCount={RetryCount}, DelayMs={DelayMs}",
+                    eventArgs.DeliveryTag,
+                    nextRetryCount,
+                    delayMs);
+
+                _channel.BasicAck(eventArgs.DeliveryTag, false);
+            }
+            catch (Exception retryEx)
+            {
+                _logger.LogError(
+                    retryEx,
+                    "Retry handling failed. NACKing message for broker redelivery. DeliveryTag={DeliveryTag}",
+                    eventArgs.DeliveryTag);
+
+                _channel.BasicNack(eventArgs.DeliveryTag, false, requeue: true);
+            }
         }
+    }
+
+    private static int GetRetryCount(IDictionary<string, object?>? headers)
+    {
+        if (headers is null || !headers.TryGetValue("x-retry-count", out var value) || value is null)
+            return 0;
+
+        return value switch
+        {
+            byte byteValue => byteValue,
+            sbyte sbyteValue => sbyteValue,
+            short shortValue => shortValue,
+            ushort ushortValue => ushortValue,
+            int intValue => intValue,
+            uint uintValue => (int)uintValue,
+            long longValue => (int)longValue,
+            ulong ulongValue => (int)ulongValue,
+            byte[] bytes when int.TryParse(Encoding.UTF8.GetString(bytes), out var parsedBytes) => parsedBytes,
+            string str when int.TryParse(str, out var parsedString) => parsedString,
+            _ => 0
+        };
+    }
+
+    private int GetRetryDelayMilliseconds(int currentRetryCount)
+    {
+        var initialDelayMs = Math.Max(1, _options.InitialRetryDelaySeconds) * 1000;
+        var maxDelayMs = Math.Max(initialDelayMs, _options.MaxRetryDelaySeconds * 1000);
+
+        var exponentialDelay = initialDelayMs * Math.Pow(2, Math.Max(0, currentRetryCount));
+        return (int)Math.Min(exponentialDelay, maxDelayMs);
     }
 
     private static Document? CreateDocument(MinioObjectCreated? message)

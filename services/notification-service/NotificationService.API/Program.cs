@@ -70,12 +70,14 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<NotificationDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
+var notificationServiceQueue = builder.Configuration["Messaging:Queues:NotificationServiceQueue"] ?? "notification-service";
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ClaimSubmittedConsumer>();
 
     x.AddConsumer<RequestDocumentsConsumer>()
-        .Endpoint(e => e.Name = "notification-service");
+        .Endpoint(e => e.Name = notificationServiceQueue);
 
     x.UsingRabbitMq((context, cfg) =>
     {

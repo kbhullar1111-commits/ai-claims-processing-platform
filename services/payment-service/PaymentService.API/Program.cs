@@ -32,10 +32,12 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
 
+var paymentServiceQueue = builder.Configuration["Messaging:Queues:PaymentServiceQueue"] ?? "payment-service";
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ProcessPaymentConsumer>()
-        .Endpoint(e => e.Name = "payment-service");
+        .Endpoint(e => e.Name = paymentServiceQueue);
 
     x.UsingRabbitMq((context, cfg) =>
     {

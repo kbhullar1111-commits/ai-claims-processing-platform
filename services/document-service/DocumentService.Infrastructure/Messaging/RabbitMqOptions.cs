@@ -17,4 +17,24 @@ public class RabbitMqOptions
     public string MinioNotificationArn { get; set; } = "arn:minio:sqs::PRIMARY:amqp";
 
     public string DocumentUploadedExchangeName { get; set; } = "document-uploaded";
+
+    public string MinioDeadLetterExchangeName { get; set; } = "minio-dlx";
+
+    public string MinioObjectCreatedDeadLetterQueueName { get; set; } = "minio-object-created-dlq";
+
+    public string MinioDeadLetterRoutingKey { get; set; } = "dlq";
+
+    public string MinioRetryExchangeName { get; set; } = "minio-retry";
+
+    public string MinioObjectCreatedRetryQueueName { get; set; } = "minio-object-created-retry";
+
+    public string MinioRetryRoutingKey { get; set; } = "retry";
+
+    public int MaxRetryAttempts { get; set; } = 3;
+
+    public int InitialRetryDelaySeconds { get; set; } = 5;
+
+    public int MaxRetryDelaySeconds { get; set; } = 300;
+
+    public bool ThrowTestException { get; set; } = false;
 }
