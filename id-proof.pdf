@@ -1,36 +1,73 @@
-%PDF-1.1
+%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
 endobj
 4 0 obj
-<< /Length 61 >>
+<< /Length 1967 >>
 stream
 BT
-/F1 12 Tf
-72 100 Td
-(ID Proof Dummy PDF) Tj
+1 0 0 1 170 762 Tm /F2 16 Tf (REPUBLIC OF INDIA) Tj
+1 0 0 1 128 744 Tm /F1  9 Tf (UNIQUE IDENTIFICATION AUTHORITY OF INDIA) Tj
+1 0 0 1 193 726 Tm /F2 13 Tf (AADHAAR IDENTITY CARD) Tj
+1 0 0 1  50 698 Tm /F2 10 Tf (Card Number:) Tj
+1 0 0 1 155 698 Tm /F2 12 Tf (4821  7639  0045) Tj
+1 0 0 1  50 672 Tm /F2 10 Tf (Full Name:) Tj
+1 0 0 1 155 672 Tm /F1 10 Tf (RAJESH KUMAR SHARMA) Tj
+1 0 0 1  50 654 Tm /F2 10 Tf (Date of Birth:) Tj
+1 0 0 1 155 654 Tm /F1 10 Tf (15 / 03 / 1985) Tj
+1 0 0 1 330 654 Tm /F2 10 Tf (Gender:) Tj
+1 0 0 1 390 654 Tm /F1 10 Tf (MALE) Tj
+1 0 0 1  50 636 Tm /F2 10 Tf (Address:) Tj
+1 0 0 1 155 636 Tm /F1 10 Tf (42, MG Road, Bandra West,) Tj
+1 0 0 1 155 621 Tm /F1 10 Tf (Mumbai - 400 050, Maharashtra, India) Tj
+1 0 0 1  50 603 Tm /F2 10 Tf (Issued On:) Tj
+1 0 0 1 155 603 Tm /F1 10 Tf (10-Jan-2020) Tj
+1 0 0 1 330 603 Tm /F2 10 Tf (Valid Until:) Tj
+1 0 0 1 415 603 Tm /F1 10 Tf (09-Jan-2030) Tj
+1 0 0 1  50 580 Tm /F2 10 Tf (PAN Number:) Tj
+1 0 0 1 155 580 Tm /F1 10 Tf (BNKPS4217R) Tj
+1 0 0 1 330 580 Tm /F2 10 Tf (Mobile:) Tj
+1 0 0 1 390 580 Tm /F1 10 Tf (+91 98765 43210) Tj
+1 0 0 1  50 562 Tm /F2 10 Tf (Enrolment No:) Tj
+1 0 0 1 155 562 Tm /F1 10 Tf (2948/04821/02046) Tj
+1 0 0 1  50 536 Tm /F2 10 Tf (DECLARATION) Tj
+1 0 0 1  50 519 Tm /F1  9 Tf (This document is issued by the Government of India under the Aadhaar) Tj
+1 0 0 1  50 506 Tm /F1  9 Tf (\(Targeted Delivery of Financial and Other Subsidies, Benefits and) Tj
+1 0 0 1  50 493 Tm /F1  9 Tf (Services\) Act, 2016. Biometric authentication is required for all) Tj
+1 0 0 1  50 480 Tm /F1  9 Tf (sensitive transactions involving this identity.) Tj
+1 0 0 1  50 458 Tm /F1  8 Tf (For queries: Helpline 1947  |  help@uidai.gov.in  |  www.uidai.gov.in) Tj
+1 0 0 1  50 438 Tm /F2  9 Tf (Claim Reference: CLM-2026-20948    Document Type: IDENTITY PROOF) Tj
 ET
+0.5 w
+50 720 m 562 720 l S
+50 716 m 562 716 l S
+50 715 m 50 430 l S
+562 715 m 562 430 l S
 endstream
 endobj
 5 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
 xref
-0 6
+0 7
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000241 00000 n 
-0000000352 00000 n 
+0000000251 00000 n 
+0000002270 00000 n 
+0000002340 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<< /Size 7 /Root 1 0 R >>
 startxref
-422
+2415
 %%EOF

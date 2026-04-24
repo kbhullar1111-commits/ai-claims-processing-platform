@@ -77,18 +77,19 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ClaimSubmittedConsumer>();
 
     x.AddConsumer<RequestDocumentsConsumer>()
-        .Endpoint(e => e.Name = notificationServiceQueue);
+        .ExcludeFromConfigureEndpoints();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
-        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+        var connectionString =
+            builder.Configuration.GetConnectionString("ServiceBus");
 
-        cfg.Host(rabbitHost, "/", h =>
+        cfg.Host(connectionString);
+
+        cfg.ReceiveEndpoint(notificationServiceQueue, e =>
         {
-            h.Username(rabbitUsername);
-            h.Password(rabbitPassword);
+            e.ConfigureConsumeTopology = false;
+            e.ConfigureConsumer<RequestDocumentsConsumer>(context);
         });
 
         cfg.ConfigureEndpoints(context);

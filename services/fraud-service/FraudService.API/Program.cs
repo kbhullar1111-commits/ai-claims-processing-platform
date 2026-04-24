@@ -37,18 +37,18 @@ var fraudServiceQueue = builder.Configuration["Messaging:Queues:FraudServiceQueu
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<RunFraudCheckConsumer>()
-        .Endpoint(e => e.Name = fraudServiceQueue);
+        .ExcludeFromConfigureEndpoints();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
-        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+        var connectionString =
+            builder.Configuration.GetConnectionString("ServiceBus");
+        cfg.Host(connectionString);
 
-        cfg.Host(rabbitHost, "/", h =>
+        cfg.ReceiveEndpoint(fraudServiceQueue, e =>
         {
-            h.Username(rabbitUsername);
-            h.Password(rabbitPassword);
+            e.ConfigureConsumeTopology = false;
+            e.ConfigureConsumer<RunFraudCheckConsumer>(context);
         });
 
         cfg.ConfigureEndpoints(context);

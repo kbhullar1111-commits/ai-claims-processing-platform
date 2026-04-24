@@ -37,20 +37,20 @@ var paymentServiceQueue = builder.Configuration["Messaging:Queues:PaymentService
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ProcessPaymentConsumer>()
-        .Endpoint(e => e.Name = paymentServiceQueue);
+        .ExcludeFromConfigureEndpoints();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
-        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
+        var connectionString =
+            builder.Configuration.GetConnectionString("ServiceBus");
+        cfg.Host(connectionString);
 
-        cfg.Host(rabbitHost, "/", h =>
+        cfg.ReceiveEndpoint(paymentServiceQueue, e =>
         {
-            h.Username(rabbitUsername);
-            h.Password(rabbitPassword);
+            e.ConfigureConsumeTopology = false;
+            e.ConfigureConsumer<ProcessPaymentConsumer>(context);
         });
-
+        
         cfg.ConfigureEndpoints(context);
     });
 });

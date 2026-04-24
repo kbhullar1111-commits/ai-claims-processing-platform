@@ -1,36 +1,80 @@
-%PDF-1.1
+%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
 endobj
 4 0 obj
-<< /Length 67 >>
+<< /Length 3125 >>
 stream
 BT
-/F1 12 Tf
-72 100 Td
-(Police Report Dummy PDF) Tj
+1 0 0 1 130 762 Tm /F2 15 Tf (METROPOLITAN POLICE DEPARTMENT) Tj
+1 0 0 1 178 744 Tm /F1  9 Tf (Mumbai City Police  |  Traffic Division) Tj
+1 0 0 1 185 726 Tm /F2 13 Tf (FIRST INFORMATION REPORT) Tj
+1 0 0 1  50 700 Tm /F2 10 Tf (FIR Case No:) Tj
+1 0 0 1 155 700 Tm /F1 10 Tf (FIR/2026/MH-014892) Tj
+1 0 0 1 360 700 Tm /F2 10 Tf (Date Filed:) Tj
+1 0 0 1 435 700 Tm /F1 10 Tf (18-Apr-2026) Tj
+1 0 0 1  50 682 Tm /F2 10 Tf (Reporting Officer:) Tj
+1 0 0 1 165 682 Tm /F1 10 Tf (Inspector Vijay R. Patil  |  Badge No: 4412) Tj
+1 0 0 1  50 664 Tm /F2 10 Tf (Station:) Tj
+1 0 0 1 165 664 Tm /F1 10 Tf (Vashi Traffic Division, Navi Mumbai) Tj
+1 0 0 1  50 646 Tm /F2 10 Tf (Date & Time:) Tj
+1 0 0 1 165 646 Tm /F1 10 Tf (18 April 2026  |  14:35 hrs IST) Tj
+1 0 0 1  50 628 Tm /F2 10 Tf (Location:) Tj
+1 0 0 1 165 628 Tm /F1 10 Tf (Western Expressway Highway, Near Vashi Bridge,) Tj
+1 0 0 1 165 614 Tm /F1 10 Tf (Navi Mumbai - 400 703, Maharashtra) Tj
+1 0 0 1  50 592 Tm /F2 11 Tf (PARTIES INVOLVED) Tj
+1 0 0 1  50 574 Tm /F2 10 Tf (Vehicle 1:) Tj
+1 0 0 1  50 559 Tm /F1 10 Tf (Owner: Rajesh Kumar Sharma  |  Reg: MH-04-AB-7821  |  Honda City 2022) Tj
+1 0 0 1  50 544 Tm /F1 10 Tf (DL No: MH-2018-04-12983  |  Insurer: National Insurance Co  |  Policy: NI-4821092) Tj
+1 0 0 1  50 523 Tm /F2 10 Tf (Vehicle 2:) Tj
+1 0 0 1  50 508 Tm /F1 10 Tf (Owner: Sunita Ashok Mehta  |  Reg: MH-02-CK-3304  |  Maruti Swift 2020) Tj
+1 0 0 1  50 493 Tm /F1 10 Tf (DL No: MH-2020-02-88741  |  Insurer: HDFC ERGO  |  Policy: HE-3304112) Tj
+1 0 0 1  50 471 Tm /F2 11 Tf (DESCRIPTION OF INCIDENT) Tj
+1 0 0 1  50 453 Tm /F1 10 Tf (On 18 April 2026 at approximately 14:35 hrs, a two-vehicle collision) Tj
+1 0 0 1  50 439 Tm /F1 10 Tf (occurred on the Western Expressway Highway near Vashi Bridge. Vehicle) Tj
+1 0 0 1  50 425 Tm /F1 10 Tf (MH-04-AB-7821 \(Honda City\) was traveling northbound in the second lane) Tj
+1 0 0 1  50 411 Tm /F1 10 Tf (at approximately 65 km/h when Vehicle MH-02-CK-3304 \(Maruti Swift\)) Tj
+1 0 0 1  50 397 Tm /F1 10 Tf (changed lanes without signaling, causing a side-impact collision.) Tj
+1 0 0 1  50 383 Tm /F1 10 Tf (Both drivers sustained no injuries. Traffic disrupted for 45 minutes.) Tj
+1 0 0 1  50 369 Tm /F1 10 Tf (Both vehicles were towed to Vashi Government Impound Yard.) Tj
+1 0 0 1  50 347 Tm /F2 11 Tf (DAMAGE ASSESSMENT) Tj
+1 0 0 1  50 329 Tm /F1 10 Tf (Vehicle 1 \(Honda City\): Front bumper, hood deformation, right headlamp.) Tj
+1 0 0 1  50 315 Tm /F1 10 Tf (Estimated repair cost: Rs. 85,000/-) Tj
+1 0 0 1  50 300 Tm /F1 10 Tf (Vehicle 2 \(Maruti Swift\): Left door panel crumple, side mirror detached.) Tj
+1 0 0 1  50 286 Tm /F1 10 Tf (Estimated repair cost: Rs. 42,000/-) Tj
+1 0 0 1  50 261 Tm /F2 10 Tf (Officer Signature: _________________________  ) Tj
+1 0 0 1 360 261 Tm /F2 10 Tf (Station Seal:) Tj
+1 0 0 1  50 241 Tm /F1  9 Tf (Inspector Vijay R. Patil  |  Vashi Traffic Division  |  Mumbai City Police) Tj
+1 0 0 1  50 219 Tm /F2  9 Tf (Claim Reference: CLM-2026-20948    Document Type: POLICE REPORT) Tj
 ET
+0.5 w
+50 720 m 562 720 l S
+50 716 m 562 716 l S
 endstream
 endobj
 5 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
 xref
-0 6
+0 7
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000241 00000 n 
-0000000358 00000 n 
+0000000251 00000 n 
+0000003428 00000 n 
+0000003498 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<< /Size 7 /Root 1 0 R >>
 startxref
-428
+3573
 %%EOF

@@ -13,7 +13,7 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClaimsMetrics _claimsMetrics;
 
-    private IReadOnlyList<string> RequiredDocuments { get; init; } = new List<string>(["ID Proof", "Accident Photos", "Police Report"]);
+    private IReadOnlyList<string> RequiredDocuments { get; init; } = new List<string>(["ID_Proof", "Accident_Photos", "Police_Report"]);
 
 
     public SubmitClaimCommandHandler(

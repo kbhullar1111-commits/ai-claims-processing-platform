@@ -58,8 +58,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
-  "documentType": "ID Proof",
+  "claimId": "07f08a99-03ce-460d-b50d-b5a428ae4ecf",
+  "documentType": "ID_Proof",
   "fileName": "id-proof.pdf"
 }
 
@@ -68,6 +68,7 @@ Accept: application/json
 
 PUT {{uploadUrlIdProof}}
 Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
 
 < ./id-proof.pdf
 
@@ -78,8 +79,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
-  "documentType": "Accident Photos",
+  "claimId": "07f08a99-03ce-460d-b50d-b5a428ae4ecf",
+  "documentType": "Accident_Photos",
   "fileName": "accident-photos.pdf"
 }
 
@@ -88,6 +89,7 @@ Accept: application/json
 
 PUT {{uploadUrlAccidentPhotos}}
 Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
 
 < ./accident-photos.pdf
 
@@ -98,8 +100,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "c024f6ca-3c48-4bd0-8b31-90a55321a89f",
-  "documentType": "Police Report",
+  "claimId": "07f08a99-03ce-460d-b50d-b5a428ae4ecf",
+  "documentType": "Police_Report",
   "fileName": "police-report.pdf"
 }
 
@@ -108,6 +110,7 @@ Accept: application/json
 
 PUT {{uploadUrlPoliceReport}}
 Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
 
 < ./police-report.pdf
 

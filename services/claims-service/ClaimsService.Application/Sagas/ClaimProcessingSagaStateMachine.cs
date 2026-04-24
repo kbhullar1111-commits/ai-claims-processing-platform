@@ -89,7 +89,7 @@ public class ClaimProcessingSagaStateMachine :
 
                     context.Saga.RequiredDocuments =
                         context.Message.RequiredDocuments.ToList();
-                })
+                })                                  
                 .Send(_notificationServiceQueueUri, context =>
                     new RequestDocuments(
                         context.Message.ClaimId,

@@ -6,9 +6,14 @@ using ClaimsService.Infrastructure.Observability.Metrics;
 using ClaimsService.Infrastructure.Observability.Constants;
 using ClaimsService.Infrastructure.Messaging;
 using MediatR;
+using Npgsql;
 using ClaimsService.Application;
 using ClaimsService.Application.Commands;
 using ClaimsService.Application.Sagas;
+using BuildingBlocks.Contracts.Claims;
+using BuildingBlocks.Contracts.Documents;
+using BuildingBlocks.Contracts.Fraud;
+using BuildingBlocks.Contracts.Payment;
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -104,39 +109,66 @@ builder.Services.AddMassTransit(x =>
             });
         });
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-        var rabbitUsername = builder.Configuration["RabbitMq:Username"] ?? "claimsuser";
-        var rabbitPassword = builder.Configuration["RabbitMq:Password"] ?? "claimspassword";
-        var claimsServiceQueue = builder.Configuration["Messaging:Queues:ClaimsServiceQueue"] ?? "claims-service";
+        var connectionString =
+            builder.Configuration.GetConnectionString("ServiceBus");
 
-        cfg.Host(rabbitHost, "/", h =>
-        {
-            h.Username(rabbitUsername);
-            h.Password(rabbitPassword);
-        });
+        cfg.Host(connectionString);
+
+        var claimsServiceQueue =
+            builder.Configuration["Messaging:Queues:ClaimsServiceQueue"]
+            ?? "claims-service";
 
         cfg.ReceiveEndpoint(claimsServiceQueue, e =>
         {
+            e.ConfigureConsumeTopology = false;
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
 
-        var documentUploadedExchange = builder.Configuration["Messaging:DocumentUploaded:ExchangeName"] ?? "document-uploaded";
-        var documentUploadedQueue = builder.Configuration["Messaging:DocumentUploaded:QueueName"] ?? "document-uploaded-bridge";
-
-        cfg.ReceiveEndpoint(documentUploadedQueue, e =>
+        cfg.UseMessageRetry(r =>
         {
-            // Only the bridge endpoint understands the raw publisher contract.
-            // The saga continues to consume the internal typed event contract.
-            e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
-            e.Bind(documentUploadedExchange);
-            e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
+            r.Handle<PostgresException>(x => x.SqlState == "40001");
+            r.Interval(3, TimeSpan.FromSeconds(1));
         });
 
-        cfg.ConfigureEndpoints(context);
-    });
-});
+        cfg.Publish<MarkClaimApproved>(x => x.Exclude = true);
+        cfg.Publish<MarkClaimRejected>(x => x.Exclude = true);
+        cfg.Publish<MarkClaimUnderReview>(x => x.Exclude = true);
+        cfg.Publish<RequestDocuments>(x => x.Exclude = true);
+        cfg.Publish<RunFraudCheck>(x => x.Exclude = true);
+        cfg.Publish<ProcessPayment>(x => x.Exclude = true);
+
+        // DO NOT add RabbitMQ raw bridge endpoint here yet
+        // var documentUploadedExchange = builder.Configuration["Messaging:DocumentUploaded:ExchangeName"] ?? "document-uploaded";
+        // var documentUploadedQueue = builder.Configuration["Messaging:DocumentUploaded:QueueName"] ?? "document-uploaded-bridge";
+
+        // cfg.ReceiveEndpoint(documentUploadedQueue, e =>
+        // {
+        //     // Only the bridge endpoint understands the raw publisher contract.
+        //     // The saga continues to consume the internal typed event contract.
+        //     e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
+        //     e.Bind(documentUploadedExchange);
+        //     e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
+        // });
+
+      cfg.SubscriptionEndpoint(
+            "claims-document-bridge",
+            "document-uploaded-raw",
+            e =>
+            {
+                e.ConfigureConsumeTopology = false;
+
+                e.UseRawJsonDeserializer(
+                    RawSerializerOptions.AnyMessageType,
+                    isDefault: true);
+
+                e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
+            });
+
+                cfg.ConfigureEndpoints(context);
+            });
+        });
 
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();

@@ -1,36 +1,80 @@
-%PDF-1.1
+%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
 endobj
 4 0 obj
-<< /Length 68 >>
+<< /Length 3337 >>
 stream
 BT
-/F1 12 Tf
-72 100 Td
-(Accident Photos Dummy PDF) Tj
+1 0 0 1 148 762 Tm /F2 15 Tf (VEHICLE ACCIDENT PHOTO EVIDENCE LOG) Tj
+1 0 0 1 140 744 Tm /F1  9 Tf (Compiled by: National Insurance Claims Investigation Division) Tj
+1 0 0 1 205 726 Tm /F2 12 Tf (PHOTO EVIDENCE LOG) Tj
+1 0 0 1  50 700 Tm /F2 10 Tf (Claim Number:) Tj
+1 0 0 1 160 700 Tm /F1 10 Tf (CLM-2026-20948) Tj
+1 0 0 1 360 700 Tm /F2 10 Tf (Date:) Tj
+1 0 0 1 395 700 Tm /F1 10 Tf (18-Apr-2026) Tj
+1 0 0 1  50 682 Tm /F2 10 Tf (Claimant:) Tj
+1 0 0 1 160 682 Tm /F1 10 Tf (Rajesh Kumar Sharma) Tj
+1 0 0 1 360 682 Tm /F2 10 Tf (Vehicle:) Tj
+1 0 0 1 410 682 Tm /F1 10 Tf (MH-04-AB-7821) Tj
+1 0 0 1  50 664 Tm /F2 10 Tf (Location:) Tj
+1 0 0 1 160 664 Tm /F1 10 Tf (Western Expressway Highway, Near Vashi Bridge, Navi Mumbai) Tj
+1 0 0 1  50 646 Tm /F2 10 Tf (Investigator:) Tj
+1 0 0 1 160 646 Tm /F1 10 Tf (Priya D. Nair  |  Investigator ID: CI-4892) Tj
+1 0 0 1  50 620 Tm /F2 11 Tf (PHOTOGRAPH INVENTORY) Tj
+1 0 0 1  50 602 Tm /F2 10 Tf (Photo 1  -  IMG_20260418_143512.jpg  [14:35:12]) Tj
+1 0 0 1  50 587 Tm /F1 10 Tf (Front-right view of Vehicle 1. Visible damage to front bumper with) Tj
+1 0 0 1  50 573 Tm /F1 10 Tf (crumple deformation, hood buckle, and shattered right headlamp assembly.) Tj
+1 0 0 1  50 552 Tm /F2 10 Tf (Photo 2  -  IMG_20260418_143548.jpg  [14:35:48]) Tj
+1 0 0 1  50 537 Tm /F1 10 Tf (Close-up of front bumper impact zone. Clear paint transfer from Vehicle 2) Tj
+1 0 0 1  50 523 Tm /F1 10 Tf (\(white paint on dark grey bumper\) and airbag deployment indicator visible.) Tj
+1 0 0 1  50 502 Tm /F2 10 Tf (Photo 3  -  IMG_20260418_143622.jpg  [14:36:22]) Tj
+1 0 0 1  50 487 Tm /F1 10 Tf (Left-side view of Vehicle 2 \(Maruti Swift\). Door panel crumpled inward,) Tj
+1 0 0 1  50 473 Tm /F1 10 Tf (side mirror detached, and left rear window glass partially shattered.) Tj
+1 0 0 1  50 452 Tm /F2 10 Tf (Photo 4  -  IMG_20260418_143701.jpg  [14:37:01]) Tj
+1 0 0 1  50 437 Tm /F1 10 Tf (Wide-angle view of accident scene showing final resting positions of both) Tj
+1 0 0 1  50 423 Tm /F1 10 Tf (vehicles and skid marks on the road surface. Skid mark length: approx. 18 m.) Tj
+1 0 0 1  50 402 Tm /F2 10 Tf (Photo 5  -  IMG_20260418_144015.jpg  [14:40:15]) Tj
+1 0 0 1  50 387 Tm /F1 10 Tf (Road surface at primary point of impact. No potholes, debris, or hazards) Tj
+1 0 0 1  50 373 Tm /F1 10 Tf (visible. Weather: Clear sky. Road condition: Dry. Visibility: Good.) Tj
+1 0 0 1  50 352 Tm /F2 10 Tf (Photo 6  -  IMG_20260418_144230.jpg  [14:42:30]) Tj
+1 0 0 1  50 337 Tm /F1 10 Tf (Dashcam still from Vehicle 1 at timestamp 14:34:58. Clearly shows Vehicle 2) Tj
+1 0 0 1  50 323 Tm /F1 10 Tf (initiating lane change without indicator signal from the adjacent lane.) Tj
+1 0 0 1  50 297 Tm /F2 11 Tf (CERTIFICATION) Tj
+1 0 0 1  50 279 Tm /F1  9 Tf (I, Priya D. Nair \(CI-4892\), hereby certify that all photographs in this log) Tj
+1 0 0 1  50 265 Tm /F1  9 Tf (are authentic records captured at the accident scene on 18 April 2026.) Tj
+1 0 0 1  50 251 Tm /F1  9 Tf (No alterations, filters, or edits have been applied to any image.) Tj
+1 0 0 1  50 228 Tm /F2 10 Tf (Investigator Signature: _________________________) Tj
+1 0 0 1  50 206 Tm /F2  9 Tf (Claim Reference: CLM-2026-20948    Document Type: ACCIDENT PHOTO EVIDENCE) Tj
 ET
+0.5 w
+50 720 m 562 720 l S
+50 716 m 562 716 l S
 endstream
 endobj
 5 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
 xref
-0 6
+0 7
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000241 00000 n 
-0000000359 00000 n 
+0000000251 00000 n 
+0000003640 00000 n 
+0000003710 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<< /Size 7 /Root 1 0 R >>
 startxref
-429
+3785
 %%EOF

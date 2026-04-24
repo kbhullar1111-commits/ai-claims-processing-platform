@@ -17,6 +17,8 @@ using System.Reflection;
 using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
+var blobStorageConnectionString = builder.Configuration.GetConnectionString("BlobStorage");
+var useAzureBlobStorage = !string.IsNullOrWhiteSpace(blobStorageConnectionString);
 
 builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 {
@@ -51,10 +53,6 @@ builder.Services.AddSwaggerGen(options =>
     if (File.Exists(xmlPath))
         options.IncludeXmlComments(xmlPath);
 });
-builder.Services.Configure<ObjectStorageOptions>(
-    builder.Configuration.GetSection("ObjectStorage"));
-builder.Services.Configure<RabbitMqOptions>(
-    builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
@@ -66,44 +64,69 @@ builder.Services.AddMediatR(cfg =>
         typeof(GenerateUploadUrlCommand).Assembly);
 });
 
-builder.Services.AddSingleton<IMinioClient>(sp =>
+if (!useAzureBlobStorage)
 {
-    var options = sp
-        .GetRequiredService<IOptions<ObjectStorageOptions>>()
-        .Value;
+    builder.Services.Configure<ObjectStorageOptions>(
+    builder.Configuration.GetSection("ObjectStorage"));
+    builder.Services.Configure<RabbitMqOptions>(
+        builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+        
+    builder.Services.AddSingleton<IMinioClient>(sp =>
+    {
+        var options = sp
+            .GetRequiredService<IOptions<ObjectStorageOptions>>()
+            .Value;
 
-    return new MinioClient()
-        .WithEndpoint(options.Endpoint)
-        .WithCredentials(options.AccessKey, options.SecretKey)
-        .WithSSL(options.UseSsl)
-        .Build();
-});
+        return new MinioClient()
+            .WithEndpoint(options.Endpoint)
+            .WithCredentials(options.AccessKey, options.SecretKey)
+            .WithSSL(options.UseSsl)
+            .Build();
+    });
+}
+
+// builder.Services.AddScoped<IObjectStorage>(sp =>
+// {
+//     var options = sp
+//         .GetRequiredService<IOptions<ObjectStorageOptions>>()
+//         .Value;
+
+//     // Use a separate client for presigned URLs pointing at the public endpoint
+//     // so browsers can reach MinIO directly (not the internal Docker hostname).
+//     var publicEndpoint = options.PublicEndpoint ?? options.Endpoint;
+//     var presignClient = new MinioClient()
+//         .WithEndpoint(publicEndpoint)
+//         .WithCredentials(options.AccessKey, options.SecretKey)
+//         .WithSSL(options.UseSsl)
+//         .Build();
+
+//     return new MinioObjectStorage(presignClient, options.Bucket);
+// });
 
 builder.Services.AddScoped<IObjectStorage>(sp =>
 {
-    var options = sp
-        .GetRequiredService<IOptions<ObjectStorageOptions>>()
-        .Value;
+    var config = sp.GetRequiredService<IConfiguration>();
 
-    // Use a separate client for presigned URLs pointing at the public endpoint
-    // so browsers can reach MinIO directly (not the internal Docker hostname).
-    var publicEndpoint = options.PublicEndpoint ?? options.Endpoint;
-    var presignClient = new MinioClient()
-        .WithEndpoint(publicEndpoint)
-        .WithCredentials(options.AccessKey, options.SecretKey)
-        .WithSSL(options.UseSsl)
-        .Build();
+    var connectionString =
+        config.GetConnectionString("BlobStorage");
 
-    return new MinioObjectStorage(presignClient, options.Bucket);
+    var containerName =
+        config["Storage:ContainerName"];
+
+    return new AzureBlobObjectStorage(
+        connectionString!,
+        containerName!);
 });
 
 // The custom messaging flow is split into two background services:
 // 1. ObjectCreatedConsumer ingests raw MinIO notifications and writes document + outbox rows.
 // 2. OutboxDispatcher reads pending outbox rows and publishes them to RabbitMQ.
-builder.Services.AddHostedService<ObjectCreatedConsumer>();
-builder.Services.AddHostedService<OutboxDispatcher>();
-
-builder.Services.AddSingleton<RabbitPublisher>();
+if (!useAzureBlobStorage)
+{
+    builder.Services.AddHostedService<ObjectCreatedConsumer>();
+    builder.Services.AddHostedService<OutboxDispatcher>();
+    builder.Services.AddSingleton<RabbitPublisher>();
+}
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 
@@ -135,8 +158,9 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!useAzureBlobStorage)
 {
+    using var scope = app.Services.CreateScope();
     var client = scope.ServiceProvider
         .GetRequiredService<IMinioClient>();
 
