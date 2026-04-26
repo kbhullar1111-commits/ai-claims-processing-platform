@@ -3,6 +3,7 @@ using BuildingBlocks.Contracts.Claims;
 using BuildingBlocks.Contracts.Documents;
 using BuildingBlocks.Contracts.Fraud;
 using BuildingBlocks.Contracts.Payment;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ClaimsService.Application.Sagas;
@@ -10,6 +11,7 @@ namespace ClaimsService.Application.Sagas;
 public class ClaimProcessingSagaStateMachine :
     MassTransitStateMachine<ClaimProcessingSagaState>
 {
+    private readonly ILogger<ClaimProcessingSagaStateMachine> _logger;
     private readonly Uri _claimsServiceQueueUri;
     private readonly Uri _notificationServiceQueueUri;
     private readonly Uri _fraudServiceQueueUri;
@@ -46,8 +48,11 @@ public class ClaimProcessingSagaStateMachine :
     /// transitions the saga to the completed state and terminates the saga instance.
     /// The SetCompletedWhenFinalized() configuration handles this automatically.
     /// </summary>
-    public ClaimProcessingSagaStateMachine(IOptions<ClaimProcessingSagaRoutingOptions> routingOptions)
+    public ClaimProcessingSagaStateMachine(
+        IOptions<ClaimProcessingSagaRoutingOptions> routingOptions,
+        ILogger<ClaimProcessingSagaStateMachine> logger)
     {
+        _logger = logger;
         var routes = routingOptions.Value;
         _claimsServiceQueueUri = new Uri($"queue:{routes.ClaimsServiceQueue}");
         _notificationServiceQueueUri = new Uri($"queue:{routes.NotificationServiceQueue}");
@@ -89,6 +94,13 @@ public class ClaimProcessingSagaStateMachine :
 
                     context.Saga.RequiredDocuments =
                         context.Message.RequiredDocuments.ToList();
+
+                    _logger.LogInformation(
+                        "Saga started. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}, RequiredDocuments={RequiredDocuments}",
+                        context.Saga.CorrelationId,
+                        context.Saga.ClaimId,
+                        context.Saga.ClaimAmount,
+                        string.Join(", ", context.Saga.RequiredDocuments));
                 })                                  
                 .Send(_notificationServiceQueueUri, context =>
                     new RequestDocuments(
@@ -110,12 +122,24 @@ public class ClaimProcessingSagaStateMachine :
                         context.Saga.UploadedDocuments
                             .Add(context.Message.DocumentType);
                     }
+
+                    _logger.LogInformation(
+                        "Document received. SagaId={SagaId}, ClaimId={ClaimId}, DocumentType={DocumentType}, Progress={Uploaded}/{Required}",
+                        context.Saga.CorrelationId,
+                        context.Saga.ClaimId,
+                        context.Message.DocumentType,
+                        context.Saga.UploadedDocuments.Count,
+                        context.Saga.RequiredDocuments.Count);
                 })
 
                 .If(context =>
                         context.Saga.RequiredDocuments.All(doc =>
                             context.Saga.UploadedDocuments.Contains(doc)),
                     binder => binder
+                        .Then(context => _logger.LogInformation(
+                            "All documents received, initiating fraud check. SagaId={SagaId}, ClaimId={ClaimId}",
+                            context.Saga.CorrelationId,
+                            context.Saga.ClaimId))
                         .Send(_claimsServiceQueueUri, context =>
                             new MarkClaimUnderReview(context.Saga.ClaimId))
                         .Send(_fraudServiceQueueUri, context =>
@@ -132,15 +156,34 @@ public class ClaimProcessingSagaStateMachine :
                     context.Saga.IsFraudulent = context.Message.IsFraudulent;
                     context.Saga.FraudReason = context.Message.Reason;
                     context.Saga.FraudEvaluatedAt = context.Message.EvaluatedAt;
+
+                    _logger.LogInformation(
+                        "Fraud check result received. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, IsFraudulent={IsFraudulent}",
+                        context.Saga.CorrelationId,
+                        context.Saga.ClaimId,
+                        context.Message.RiskScore,
+                        context.Message.IsFraudulent);
                 })
                 .IfElse(context => context.Message.RiskScore >= 0.8m
                                 || context.Message.IsFraudulent,
-                    thenBinder => thenBinder.Send(_claimsServiceQueueUri,
+                    thenBinder => thenBinder
+                        .Then(context => _logger.LogWarning(
+                            "Claim rejected due to fraud. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, Reason={Reason}",
+                            context.Saga.CorrelationId,
+                            context.Saga.ClaimId,
+                            context.Saga.FraudRiskScore,
+                            context.Saga.FraudReason))
+                        .Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimRejected(
                                         ctx.Saga.ClaimId,
                                         ctx.Message.Reason))
                         .Finalize(),
                     elseBinder => elseBinder
+                        .Then(context => _logger.LogInformation(
+                            "Fraud check passed, initiating payment. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}",
+                            context.Saga.CorrelationId,
+                            context.Saga.ClaimId,
+                            context.Saga.ClaimAmount))
                         .Send(_paymentServiceQueueUri,
                             context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
                         .TransitionTo(PaymentProcessing)
@@ -150,13 +193,23 @@ public class ClaimProcessingSagaStateMachine :
         During(PaymentProcessing,
             When(PaymentProcessed)
                 .IfElse(context => !context.Message.Success,
-                    thenBinder => thenBinder.Send(_claimsServiceQueueUri,
+                    thenBinder => thenBinder
+                        .Then(context => _logger.LogWarning(
+                            "Claim rejected due to payment failure. SagaId={SagaId}, ClaimId={ClaimId}",
+                            context.Saga.CorrelationId,
+                            context.Saga.ClaimId))
+                        .Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimRejected(
                                         ctx.Saga.ClaimId,
                                         "Payment processing failed"))
                         //.TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
                         .Finalize(),
-                    elseBinder => elseBinder.Send(_claimsServiceQueueUri,
+                    elseBinder => elseBinder
+                        .Then(context => _logger.LogInformation(
+                            "Claim approved, payment processed successfully. SagaId={SagaId}, ClaimId={ClaimId}",
+                            context.Saga.CorrelationId,
+                            context.Saga.ClaimId))
+                        .Send(_claimsServiceQueueUri,
                                     ctx => new MarkClaimApproved(ctx.Saga.ClaimId))
                         .Finalize()
                 )

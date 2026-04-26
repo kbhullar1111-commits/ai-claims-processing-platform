@@ -1,6 +1,7 @@
 using DocumentService.Application.DTOs;
 using DocumentService.Application.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentService.Application.Commands;
 
@@ -8,10 +9,14 @@ public class GenerateUploadUrlCommandHandler
     : IRequestHandler<GenerateUploadUrlCommand, GenerateUploadUrlResult>
 {
     private readonly IObjectStorage _storage;
+    private readonly ILogger<GenerateUploadUrlCommandHandler> _logger;
 
-    public GenerateUploadUrlCommandHandler(IObjectStorage storage)
+    public GenerateUploadUrlCommandHandler(
+        IObjectStorage storage,
+        ILogger<GenerateUploadUrlCommandHandler> logger)
     {
         _storage = storage;
+        _logger = logger;
     }
 
     public async Task<GenerateUploadUrlResult> Handle(
@@ -22,6 +27,11 @@ public class GenerateUploadUrlCommandHandler
             request.ClaimId,
             request.DocumentType,
             request.FileName);
+
+        _logger.LogInformation(
+            "Generating upload URL. ClaimId={ClaimId}, DocumentType={DocumentType}",
+            request.ClaimId,
+            request.DocumentType);
 
         var uploadUrl = await _storage.GenerateUploadUrl(
             objectKey,

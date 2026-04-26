@@ -11,12 +11,22 @@ public class ClaimsMetrics : IClaimsMetrics
     public static readonly Meter Meter = new(MeterName);
 
     private readonly Counter<long> _claimsSubmittedCount;
+    private readonly Counter<long> _claimsApprovedCount;
+    private readonly Counter<long> _claimsRejectedCount;
 
     public ClaimsMetrics()
     {
         _claimsSubmittedCount = Meter.CreateCounter<long>("claims_submitted_total");
+        _claimsApprovedCount  = Meter.CreateCounter<long>("claims_approved_total");
+        _claimsRejectedCount  = Meter.CreateCounter<long>("claims_rejected_total");
     }
 
     public void ClaimsSubmitted()
         => _claimsSubmittedCount.Add(1);
+
+    public void ClaimApproved()
+        => _claimsApprovedCount.Add(1);
+
+    public void ClaimRejected(string reason)
+        => _claimsRejectedCount.Add(1, new KeyValuePair<string, object?>("reason", reason));
 }

@@ -28,9 +28,6 @@ public class BlobCreatedFunction
     public async Task Run([EventGridTrigger] string eventGridEvent)
     {
         try{
-            _logger.LogInformation("Blob event received: {event}",
-                eventGridEvent);
-
             using var doc = JsonDocument.Parse(eventGridEvent);
 
             var root = doc.RootElement;
@@ -49,8 +46,6 @@ public class BlobCreatedFunction
                 data.TryGetProperty("url", out var urlProp))
             {
                 var blobUrl = urlProp.GetString();
-
-                _logger.LogInformation("Blob URL: {url}", blobUrl);
 
                 var uri = new Uri(blobUrl!);
 

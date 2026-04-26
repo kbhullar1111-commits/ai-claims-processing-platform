@@ -27,10 +27,12 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
-        .MinimumLevel.Warning()
+        .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
         .Enrich.FromLogContext()
+        .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "DocumentService.API")
         .Enrich.WithProperty("Service", "document-api")
         .WriteTo.Console();
@@ -143,6 +145,7 @@ builder.Services.AddOpenTelemetry()
                     !httpContext.Request.Path.StartsWithSegments("/ready");
             })
             .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService("DocumentService"))

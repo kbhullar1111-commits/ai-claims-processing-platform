@@ -15,10 +15,13 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
-        .MinimumLevel.Warning()
+        .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("MassTransit", LogEventLevel.Warning)
+        .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
         .Enrich.FromLogContext()
+        .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "PaymentService.API")
         .Enrich.WithProperty("Service", "payment-api")
         .WriteTo.Console();
