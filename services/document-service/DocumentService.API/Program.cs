@@ -12,6 +12,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using System.Net.Http;
@@ -20,7 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 var blobStorageConnectionString = builder.Configuration.GetConnectionString("BlobStorage");
 var useAzureBlobStorage = !string.IsNullOrWhiteSpace(blobStorageConnectionString);
 
-builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
     var seqUrl = context.Configuration["Observability:Seq:Url"];
@@ -35,13 +36,13 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
         .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "DocumentService.API")
         .Enrich.WithProperty("Service", "document-api")
-        .WriteTo.Console();
-
-    if (seqEnabled && !string.IsNullOrWhiteSpace(seqUrl))
-    {
-        loggerConfiguration.WriteTo.Seq(seqUrl);
-    }
+        .WriteTo.Console()
+        .WriteTo.ApplicationInsights(
+            services.GetRequiredService<Microsoft.ApplicationInsights.TelemetryClient>(),
+            TelemetryConverter.Traces);
 });
+
+builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddDbContext<DocumentDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));

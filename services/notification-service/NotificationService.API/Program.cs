@@ -17,13 +17,14 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
 Directory.CreateDirectory(logDirectory);
 
-builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
     var seqUrl = context.Configuration["Observability:Seq:Url"];
@@ -45,13 +46,13 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
             Path.Combine(logDirectory, "notification-.log"),
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 14,
-            shared: true);
-
-    if (seqEnabled && !string.IsNullOrWhiteSpace(seqUrl))
-    {
-        loggerConfiguration.WriteTo.Seq(seqUrl);
-    }
+            shared: true)
+        .WriteTo.ApplicationInsights(
+            services.GetRequiredService<Microsoft.ApplicationInsights.TelemetryClient>(),
+            TelemetryConverter.Traces);
 });
+
+builder.Services.AddApplicationInsightsTelemetry();
 
 var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("Connection string 'Postgres' is required.");

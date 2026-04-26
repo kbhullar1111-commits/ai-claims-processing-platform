@@ -5,10 +5,11 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
     var seqUrl = context.Configuration["Observability:Seq:Url"];
@@ -24,13 +25,13 @@ builder.Host.UseSerilog((context, _, loggerConfiguration) =>
         .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "PaymentService.API")
         .Enrich.WithProperty("Service", "payment-api")
-        .WriteTo.Console();
-
-    if (seqEnabled && !string.IsNullOrWhiteSpace(seqUrl))
-    {
-        loggerConfiguration.WriteTo.Seq(seqUrl);
-    }
+        .WriteTo.Console()
+        .WriteTo.ApplicationInsights(
+            services.GetRequiredService<Microsoft.ApplicationInsights.TelemetryClient>(),
+            TelemetryConverter.Traces);
 });
+
+builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);

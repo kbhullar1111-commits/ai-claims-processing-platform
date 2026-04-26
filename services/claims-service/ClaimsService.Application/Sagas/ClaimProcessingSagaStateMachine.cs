@@ -123,13 +123,13 @@ public class ClaimProcessingSagaStateMachine :
                             .Add(context.Message.DocumentType);
                     }
 
-                    _logger.LogInformation(
-                        "Document received. SagaId={SagaId}, ClaimId={ClaimId}, DocumentType={DocumentType}, Progress={Uploaded}/{Required}",
-                        context.Saga.CorrelationId,
-                        context.Saga.ClaimId,
-                        context.Message.DocumentType,
-                        context.Saga.UploadedDocuments.Count,
-                        context.Saga.RequiredDocuments.Count);
+                    // _logger.LogInformation(
+                    //     "Document received. SagaId={SagaId}, ClaimId={ClaimId}, DocumentType={DocumentType}, Progress={Uploaded}/{Required}",
+                    //     context.Saga.CorrelationId,
+                    //     context.Saga.ClaimId,
+                    //     context.Message.DocumentType,
+                    //     context.Saga.UploadedDocuments.Count,
+                    //     context.Saga.RequiredDocuments.Count);
                 })
 
                 .If(context =>
