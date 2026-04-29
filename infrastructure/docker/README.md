@@ -1,259 +1,144 @@
 # Docker Compose Setup
 
-This folder contains the local Docker Compose files used by the claims platform.
+This folder contains local runtime, observability, and migration compose assets for the claims platform.
 
-## What It Does
+## Current Compose Files
 
-The base compose file starts these steady-state runtime containers:
+- `docker-compose.yml`
+  - Base runtime stack.
+  - Starts `postgres`, `claims-api`, `notification-api`, `document-api`, `fraud-api`, `payment-api`.
+  - Uses environment values from `.env` for external connections (Service Bus, Blob Storage, App Insights).
 
-1. `postgres` (`claims-postgres`)
-- Image: `postgres:15`
-- Purpose: Main relational database server that hosts `claimsdb` and `notificationdb`.
-- Environment:
-  - `POSTGRES_DB=postgres`
-  - `POSTGRES_USER=postgres`
-  - `POSTGRES_PASSWORD=postgres`
-- Port mapping: `5432:5432`
-- Persistent storage: `postgres-data` volume mounted at `/var/lib/postgresql/data`
+- `docker-compose.observability.yml`
+  - Optional overlay.
+  - Adds `seq`, `jaeger`, `prometheus`, and `grafana`.
+  - Injects OTLP endpoint (`http://jaeger:4317`) and Seq settings into API containers.
 
-2. `rabbitmq` (`claims-rabbitmq`)
-- Image: `rabbitmq:3-management`
-- Purpose: Message broker for asynchronous events between services.
-- Port mappings:
-  - `5672:5672` for AMQP messaging
-  - `15672:15672` for RabbitMQ management UI
+- `docker-compose.migrations.yml`
+  - Optional migration containers (`claims-migrator`, `notification-migrator`, `document-migrator`).
+  - Not used by default startup scripts.
 
-3. `claims-api` and `notification-api`
-- Start normally without running migrators automatically.
-- Expect the database schema to already be up to date.
-- Use RabbitMQ for publish/consume event flow.
-- Both services wait for `postgres` to pass its healthcheck (`pg_isready`) before starting.
-- Both expose `/live` (liveness) and `/ready` (readiness — checks Postgres connectivity) endpoints intended for orchestrator probes, not public access.
-- Docker tracks each API's health via `/ready`; use `docker compose ps` to see health status.
-- Port mappings:
-  - Claims API: `5001:8080`
-  - Notification API: `5002:8080`
+## Important Runtime Notes
 
-4. `docker-compose.observability.yml`
-- Purpose: optional local observability stack and related API overrides.
-- Current use: starts Seq and enables Seq sinks in both APIs only when explicitly requested.
+- Base runtime compose does not set `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- OTLP exporter traffic is expected only when the observability overlay is active or explicit env/config is provided.
+- RabbitMQ and MinIO services are currently commented in base compose and are not started by default.
 
-5. `docker-compose.migrations.yml`
-- Purpose: one-shot EF Core migrator containers for schema updates.
-- Current use: runs claims, notification, and document migrations on demand without placing migrator jobs in the normal runtime stack.
+## Commands Folder (Current)
 
-## Volume
+Use the `.cmd` scripts under `commands/`:
 
-- `postgres-data`: named Docker volume that keeps Postgres data between container restarts.
+- `start.cmd`
+  - `docker compose -f docker-compose.yml up -d --build`
 
-## Network
+- `start-observability.cmd`
+  - `docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d --build`
 
-All services (including observability and migration containers) join a single explicitly declared bridge network: `claims-network`.
+- `stop.cmd`
+  - `docker compose -f docker-compose.yml -f docker-compose.observability.yml down %*`
 
-This prevents the common problem of partial teardown leaving orphaned containers attached to Docker's default network. Because the network is declared in the base compose file and marked `external: true` in the overlays, Docker manages it predictably.
+- `migrate.cmd`
+  - Runs `dotnet ef database update` for claims, notification, and document contexts against local Postgres.
 
-To inspect the network:
-```bash
-docker network inspect claims-network
+- `check-outbox.cmd`
+  - Executes SQL counts against `documentdb` and `claimsdb` via the running `postgres` container.
+
+## Quick Start
+
+From `infrastructure/docker`:
+
+```bat
+commands\start.cmd
 ```
 
-## How To Run
+Apply migrations:
 
-PowerShell scripts are in the `commands/` subfolder. Run them from anywhere — they resolve the compose file paths automatically.
-
-### One-time setup (new machine)
-```powershell
-.\commands\setup.ps1
+```bat
+commands\migrate.cmd
 ```
 
-### Start base stack
-```powershell
-.\commands\start.ps1
+Optional observability stack:
+
+```bat
+commands\start-observability.cmd
 ```
 
-### Start with observability (Seq + Jaeger)
-```powershell
-.\commands\start-observability.ps1
+Stop everything started by either script:
+
+```bat
+commands\stop.cmd
 ```
 
-### Run database migrations
-Run this after first start or after schema changes:
-```powershell
-.\commands\migrate.ps1
+Remove volumes too:
+
+```bat
+commands\stop.cmd -v
 ```
 
-### Stop all containers (keep DB data)
-```powershell
-.\commands\stop.ps1
-```
+## Container Ports
 
-### Stop all containers and wipe DB data
-```powershell
-.\commands\stop.ps1 -v
-```
+- Postgres: `5432`
+- Claims API: `5001`
+- Notification API: `5002`
+- Document API: `5003`
+- Payment API: `5004`
+- Fraud API: `5005`
 
-> **Important:** Always use `commands\stop.ps1` to shut down. It always includes the observability overlay so all containers (including seq and jaeger) are properly removed and the `claims-network` is cleaned up. This avoids the orphaned network problem that occurs when shutting down with a different compose file set than was used to start.
+Observability overlay ports:
 
-If you need to apply EF Core migrations:
+- Seq: `5341`
+- Jaeger UI: `16686`
+- Jaeger OTLP gRPC: `4317`
+- Jaeger OTLP HTTP: `4318`
+- Prometheus: `9090`
+- Grafana: `3000`
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator
-docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator
-docker compose -f docker-compose.yml -f docker-compose.migrations.yml up document-migrator
-```
+## Health Endpoints
 
-You can remove the stopped migrator containers afterwards:
+Each API exposes:
 
-```bash
-docker compose rm -f claims-migrator notification-migrator document-migrator
-```
+- `/health`
+- `/live`
+- `/ready`
 
-This keeps migration jobs completely out of the base compose file.
-
-To stop:
+Examples:
 
 ```bash
-docker compose down
-```
-
-To stop and remove Postgres data as well:
-
-```bash
-docker compose down -v
-```
-
-## Access
-
-- Postgres host: `localhost`, port: `5432`
-- RabbitMQ AMQP: `localhost:5672`
-- RabbitMQ UI: `http://localhost:15672`
-- Claims API: `http://localhost:5001`
-- Notification API: `http://localhost:5002`
-- Seq when enabled: `http://localhost:5341` (internal port 8080, mapped to host 5341)
-
-### Health Check Endpoints
-
-These are infrastructure probes intended for orchestrators (Kubernetes liveness/readiness probes). They are not part of the public API and are not exposed in Swagger.
-
-| Endpoint | Purpose | Expected response |
-|---|---|---|
-| `GET /health` | All checks combined | `200 Healthy` |
-| `GET /live` | Liveness — is the process running? | Always `200 Healthy` |
-| `GET /ready` | Readiness — is Postgres reachable? | `200 Healthy` or `503 Unhealthy` |
-
-Claims API:
-```bash
-curl http://localhost:5001/health
-curl http://localhost:5001/live
 curl http://localhost:5001/ready
-```
-
-Notification API:
-```bash
-curl http://localhost:5002/health
-curl http://localhost:5002/live
 curl http://localhost:5002/ready
+curl http://localhost:5003/ready
+curl http://localhost:5004/ready
+curl http://localhost:5005/ready
 ```
 
-### Swagger UI
+## Manual Compose Equivalents
 
-Available in all environments for local development convenience:
+Base runtime:
 
-- Claims API: `http://localhost:5001/swagger`
-- Notification API: `http://localhost:5002/swagger`
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
 
-## Useful Commands
+Base + observability:
 
-Run these from this folder.
+```bash
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d --build
+```
 
-1. `docker compose up -d`
-Starts the normal local runtime stack in the background.
+Stop base + observability set:
 
-2. `docker compose up --build -d`
-Builds the API images if needed and then starts the normal local runtime stack.
+```bash
+docker compose -f docker-compose.yml -f docker-compose.observability.yml down
+```
 
-3. `docker compose down`
-Stops and removes the current runtime containers and network.
+Run containerized migrations (alternative to `migrate.cmd`):
 
-4. `docker compose down -v`
-Stops and removes the current runtime containers and also deletes named volumes such as the Postgres data volume.
+```bash
+docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator notification-migrator document-migrator
+```
 
-5. `docker compose ps`
-Shows the status of the runtime containers.
+## Troubleshooting
 
-6. `docker compose logs -f`
-Streams logs from all services in the base runtime stack.
-
-7. `docker compose logs -f claims-api`
-Streams only claims API logs.
-
-8. `docker compose logs -f notification-api`
-Streams only notification API logs.
-
-9. `docker compose build claims-api`
-Builds only the claims API image.
-
-10. `docker compose build notification-api`
-Builds only the notification API image.
-
-11. `docker compose restart claims-api`
-Restarts only the claims API container.
-
-12. `docker compose restart notification-api`
-Restarts only the notification API container.
-
-13. `docker compose exec claims-api /bin/sh`
-Opens a shell inside the running claims API container.
-
-14. `docker compose exec notification-api /bin/sh`
-Opens a shell inside the running notification API container.
-
-15. `docker compose config`
-Prints and validates the effective base compose configuration without starting containers.
-
-16. `docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d`
-Starts the runtime stack plus Seq and enables Seq logging in both APIs.
-
-17. `docker compose -f docker-compose.yml -f docker-compose.observability.yml logs -f seq`
-Streams Seq logs when the observability overlay is running.
-
-18. `docker compose -f docker-compose.yml -f docker-compose.observability.yml config`
-Prints and validates the merged runtime plus observability configuration.
-
-19. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator`
-Runs the claims service migration container on demand.
-
-20. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up notification-migrator`
-Runs the notification service migration container on demand.
-
-21. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up document-migrator`
-Runs the document service migration container on demand.
-
-22. `docker compose rm -f claims-migrator notification-migrator document-migrator`
-Removes the stopped migration containers after they finish.
-
-23. `docker compose -f docker-compose.yml -f docker-compose.migrations.yml config`
-Prints and validates the merged runtime plus migrations configuration.
-
-24. `commands\migrate.cmd`
-Runs claims, notification, and document migrations sequentially using the standard compose overlays.
-
-25. `commands\check-outbox.cmd`
-Queries the document and claims databases for business rows, saga rows, and MassTransit inbox/outbox row counts.
-
-## Outbox Verification
-
-Use this sequence when you want to prove the EF bus outbox is persisting messages before broker delivery.
-
-1. Start the compose stack and make sure migrations are applied.
-2. Run `commands\check-outbox.cmd` to capture a baseline.
-3. Stop RabbitMQ with `docker compose stop rabbitmq`.
-4. Trigger one publish path:
-  submit a claim through `Workspace.APIs.http`, or upload a document through the document flow.
-5. Run `commands\check-outbox.cmd` again.
-6. Confirm the business row was committed and `OutboxMessage` contains queued rows while RabbitMQ is down.
-7. Start RabbitMQ with `docker compose start rabbitmq`.
-8. Run `commands\check-outbox.cmd` again.
-9. Confirm the queued outbox rows drained after broker connectivity returned.
-
-If RabbitMQ stays up during the test, `OutboxMessage` may return to `0` very quickly because MassTransit deletes delivered outbox rows after successful delivery.
+- If APIs show unhealthy in `docker compose ps`, inspect `/ready` endpoint and container logs.
+- If OTLP dependencies to `localhost:4317` appear in Application Insights, verify whether old images are still running and rebuild/recreate containers.
+- If environment values are missing, check `infrastructure/docker/.env`.

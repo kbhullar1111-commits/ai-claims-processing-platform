@@ -1,359 +1,107 @@
 # Architecture Review
 
-Generated: 2026-03-15
+Generated: 2026-04-28
 
 ## Purpose
 
-This document captures the current architectural shape of the solution so it can evolve with the system. It explains how the main layers are used, how requests and events flow, and why files belong in their current sections.
+This document describes the architecture currently implemented in the workspace and highlights where runtime behavior differs by environment or feature toggle.
 
-## Solution Shape
+## Current Solution Shape
 
-The workspace is organized as a set of services plus shared building blocks:
+The workspace is organized into service boundaries plus shared contracts:
 
-- `building-blocks/contracts`: shared integration contracts exchanged between services.
-- `services/claims-service`: claim submission and claim lifecycle entry point.
-- `services/document-service`: document upload URL generation, MinIO notification ingestion, and document event publication.
-- `services/notification-service`: event-driven notification persistence and dispatch.
-- `infrastructure`: environment-level assets such as docker and architecture documentation.
+- `building-blocks/contracts`: shared integration contracts used across services.
+- `services/claims-service`: API + saga orchestration for claim lifecycle.
+- `services/document-service`: upload URL generation and document persistence/notification path.
+- `services/notification-service`: event-driven notification creation and background dispatch.
+- `services/fraud-service`: fraud-check consumer endpoint.
+- `services/payment-service`: payment-processing consumer endpoint.
+- `serverless/document-processor-function`: function-hosted document processor component.
+- `infrastructure`: compose files, scripts, and architecture docs.
 
-Each implemented service follows a consistent four-part structure:
+Core services follow API/Application/Domain/Infrastructure layering.
 
-- `API`: transport and composition root.
-- `Application`: use cases, orchestration, and interfaces.
-- `Domain`: business entities and rules.
-- `Infrastructure`: persistence, messaging, external integrations, and workers.
+## Runtime and Integration Summary
 
-This is a pragmatic Clean Architecture style. Dependencies point inward toward `Application` and `Domain`, while implementations of external concerns stay in `Infrastructure`.
+### Messaging
 
-## Layer Responsibilities
+- MassTransit is configured with Azure Service Bus in claims, notification, fraud, and payment APIs.
+- Claims service includes a document raw-bridge consumer endpoint for document-uploaded events.
+- Document service can run a custom raw message/outbox bridge path when MinIO mode is active.
 
-### API Layer
+### Storage
 
-The API layer owns entry points and application startup.
+- Claims, Notification, and Document services use PostgreSQL with EF Core.
+- Document service supports blob storage modes:
+	- Azure Blob mode when `ConnectionStrings:BlobStorage` is present.
+	- MinIO mode when blob storage connection string is absent.
 
-In the claims service, [services/claims-service/ClaimsService.API/Program.cs](services/claims-service/ClaimsService.API/Program.cs) configures:
+### Observability
 
-- ASP.NET Core controllers
-- EF Core with PostgreSQL
-- health endpoints at `/health`, `/ready`, and `/live`
-- MediatR registration
-- MassTransit with RabbitMQ
-- MassTransit Entity Framework outbox
-- dependency injection bindings for repository, unit of work, and event publisher
+- All APIs use Serilog + Application Insights.
+- OpenTelemetry tracing/metrics are enabled across services.
+- OTLP exporter is conditional and is only added when endpoint config is provided.
+- `/metrics` is exposed for Prometheus scraping.
 
-In the document service, [services/document-service/DocumentService.API/Program.cs](services/document-service/DocumentService.API/Program.cs) configures:
+### Health and Readiness
 
-- ASP.NET Core controllers
-- EF Core with PostgreSQL
-- health endpoints at `/health`, `/ready`, and `/live`
-- MediatR registration
-- MinIO client registration for presigned upload URLs and bucket notification setup
-- custom RabbitMQ options binding
-- hosted background services for raw MinIO notification ingestion and document outbox dispatch
-- OpenTelemetry tracing and Prometheus metrics
+- All APIs expose `/health`, `/live`, and `/ready`.
+- Claims/Notification/Document include DB-backed readiness checks.
+- Fraud/Payment currently use self-check readiness.
 
-[services/claims-service/ClaimsService.API/Controllers/ClaimsController.cs](services/claims-service/ClaimsService.API/Controllers/ClaimsController.cs) is intentionally thin. It accepts the HTTP request and sends a command through MediatR. It does not implement business logic.
+## Key Flows
 
-In the notification service, [services/notification-service/NotificationService.API/Program.cs](services/notification-service/NotificationService.API/Program.cs) configures:
+### Claim Submission and Saga Flow
 
-- Serilog
-- health endpoints at `/health`, `/ready`, and `/live`
-- EF Core with PostgreSQL
-- MassTransit consumer registration
-- MediatR registration
-- repository and unit of work bindings
-- notification senders
-- hosted background worker registration
+1. Request enters claims API controller.
+2. Command is sent through MediatR handler.
+3. Claim is persisted via repository + unit of work.
+4. Integration events are published through MassTransit/Azure Service Bus.
+5. Claim processing saga coordinates document, fraud, and payment steps.
 
-Architectural rule: the API layer should know frameworks and wiring, but it should not own use-case logic.
+### Notification Flow
 
-### Application Layer
+1. Notification consumer receives claim events from Azure Service Bus.
+2. Consumer maps event to application command.
+3. Notification row is created idempotently.
+4. Background dispatcher pulls pending rows using row locking (`FOR UPDATE SKIP LOCKED`).
+5. Sender strategy (email currently) executes delivery and updates status/retry metadata.
 
-The application layer models use cases.
+### Document Flow
 
-Examples in claims service:
+1. Client requests upload URL from document API.
+2. Document service returns URL through configured object storage provider.
+3. In MinIO mode, object-created events can flow through custom consumer/outbox/publisher.
+4. Claims bridge endpoint adapts raw document events into typed workflow events.
 
-- [services/claims-service/ClaimsService.Application/Commands/SubmitClaimCommand.cs](services/claims-service/ClaimsService.Application/Commands/SubmitClaimCommand.cs)
-- [services/claims-service/ClaimsService.Application/Handlers/SubmitClaimCommandHandler.cs](services/claims-service/ClaimsService.Application/Handlers/SubmitClaimCommandHandler.cs)
-- [services/claims-service/ClaimsService.Application/Interfaces/IClaimRepository.cs](services/claims-service/ClaimsService.Application/Interfaces/IClaimRepository.cs)
-- [services/claims-service/ClaimsService.Application/Interfaces/IEventPublisher.cs](services/claims-service/ClaimsService.Application/Interfaces/IEventPublisher.cs)
-- [services/claims-service/ClaimsService.Application/Interfaces/IUnitOfWork.cs](services/claims-service/ClaimsService.Application/Interfaces/IUnitOfWork.cs)
+## Infrastructure Shape
 
-Examples in notification service:
+- Base compose (`docker-compose.yml`) runs postgres + all APIs.
+- Observability overlay adds Seq, Jaeger, Prometheus, and Grafana plus OTLP/Seq env overrides.
+- Migrations compose exists for containerized migration runs.
+- Primary local migration helper script (`commands/migrate.cmd`) runs `dotnet ef` against local postgres.
 
-- [services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommand.cs](services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommand.cs)
-- [services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs](services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs)
-- [services/notification-service/NotificationService.Application/Interfaces/INotificationRepository.cs](services/notification-service/NotificationService.Application/Interfaces/INotificationRepository.cs)
-- [services/notification-service/NotificationService.Application/Interfaces/IUnitOfWork.cs](services/notification-service/NotificationService.Application/Interfaces/IUnitOfWork.cs)
+## Strengths
 
-Why handlers live in `Application`:
+- Clean separation of application and infrastructure concerns.
+- Explicit workflow orchestration with saga state machine.
+- Outbox patterns in key reliability boundaries.
+- Observability stack can be enabled on demand without changing code.
+- Consistent health endpoints and container readiness checks.
 
-- a handler represents a use case
-- it coordinates domain behavior and external dependencies through interfaces
-- it should not know HTTP, RabbitMQ, EF Core, or other transport details directly
+## Gaps and Risks
 
-The application layer depends on abstractions, not implementations.
+- Mixed integration modes in document path (Azure Blob mode vs MinIO bridge mode) increase operational complexity.
+- Claims infrastructure folder naming still uses `Persistance` spelling.
+- OTLP/AI dual instrumentation can create noisy dependency telemetry when optional collectors are enabled or misconfigured.
+- Notification sender remains stub-level for real provider integration hardening.
 
-Document service application examples:
+## Maintenance Guidance
 
-- [services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommand.cs](services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommand.cs)
-- [services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommandHandler.cs](services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommandHandler.cs)
-- [services/document-service/DocumentService.Application/Interfaces/IObjectStorage.cs](services/document-service/DocumentService.Application/Interfaces/IObjectStorage.cs)
+Update this file when:
 
-### Domain Layer
-
-The domain layer owns business rules and state transitions.
-
-Claims service domain example:
-
-- [services/claims-service/ClaimsService.Domain/Entities/Claim.cs](services/claims-service/ClaimsService.Domain/Entities/Claim.cs)
-
-This entity enforces invariants such as:
-
-- claim amount must be greater than zero
-- only submitted claims can move to review
-- only approved claims can be paid
-- only paid or rejected claims can be closed
-
-Notification service domain example:
-
-- [services/notification-service/NotificationService.Domain/Entities/Notification.cs](services/notification-service/NotificationService.Domain/Entities/Notification.cs)
-
-This entity owns notification lifecycle rules such as:
-
-- initial pending state
-- retry scheduling
-- sent and failed transitions
-
-Architectural rule: domain code should stay free of framework-specific dependencies whenever possible.
-
-Document service domain example:
-
-- [services/document-service/DocumentService.Domain/Entities/Document.cs](services/document-service/DocumentService.Domain/Entities/Document.cs)
-
-This entity captures the persisted document record derived from MinIO object notifications.
-
-### Infrastructure Layer
-
-Infrastructure implements the interfaces defined by the application layer and adapts external systems.
-
-Claims service infrastructure examples:
-
-- [services/claims-service/ClaimsService.Infrastructure/Repositories/ClaimRepository.cs](services/claims-service/ClaimsService.Infrastructure/Repositories/ClaimRepository.cs)
-- [services/claims-service/ClaimsService.Infrastructure/Persistance/ClaimsDbContext.cs](services/claims-service/ClaimsService.Infrastructure/Persistance/ClaimsDbContext.cs)
-- [services/claims-service/ClaimsService.Infrastructure/Persistance/EfUnitOfWork.cs](services/claims-service/ClaimsService.Infrastructure/Persistance/EfUnitOfWork.cs)
-- [services/claims-service/ClaimsService.Infrastructure/Messaging/EventPublisher.cs](services/claims-service/ClaimsService.Infrastructure/Messaging/EventPublisher.cs)
-
-Notification service infrastructure examples:
-
-- [services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs](services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs)
-- [services/notification-service/NotificationService.Infrastructure/Persistence/NotificationDbContext.cs](services/notification-service/NotificationService.Infrastructure/Persistence/NotificationDbContext.cs)
-- [services/notification-service/NotificationService.Infrastructure/Persistence/EfUnitOfWork.cs](services/notification-service/NotificationService.Infrastructure/Persistence/EfUnitOfWork.cs)
-- [services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs](services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs)
-- [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs)
-- [services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs](services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs)
-
-Document service infrastructure examples:
-
-- [services/document-service/DocumentService.Infrastructure/Persistence/DocumentDbContext.cs](services/document-service/DocumentService.Infrastructure/Persistence/DocumentDbContext.cs)
-- [services/document-service/DocumentService.Infrastructure/Persistence/InfrastructureEntites/OutboxMessage.cs](services/document-service/DocumentService.Infrastructure/Persistence/InfrastructureEntites/OutboxMessage.cs)
-- [services/document-service/DocumentService.Infrastructure/Messaging/ObjectCreatedConsumer.cs](services/document-service/DocumentService.Infrastructure/Messaging/ObjectCreatedConsumer.cs)
-- [services/document-service/DocumentService.Infrastructure/Messaging/OutboxDispatcher.cs](services/document-service/DocumentService.Infrastructure/Messaging/OutboxDispatcher.cs)
-- [services/document-service/DocumentService.Infrastructure/Messaging/RabbitPublisher.cs](services/document-service/DocumentService.Infrastructure/Messaging/RabbitPublisher.cs)
-- [services/document-service/DocumentService.Infrastructure/Storage/MinioObjectStorage.cs](services/document-service/DocumentService.Infrastructure/Storage/MinioObjectStorage.cs)
-
-Why these files belong in `Infrastructure`:
-
-- repositories depend on EF Core and database access details
-- consumers depend on MassTransit and broker integration
-- senders depend on external delivery mechanisms
-- workers depend on hosting/runtime mechanics
-
-Environment-level infrastructure also carries architectural weight in this workspace:
-
-- [infrastructure/docker/docker-compose.yml](infrastructure/docker/docker-compose.yml) defines the steady-state local runtime stack: PostgreSQL, RabbitMQ, and the API containers.
-- [infrastructure/docker/docker-compose.migrations.yml](infrastructure/docker/docker-compose.migrations.yml) holds one-shot EF Core migration containers so schema update jobs are kept separate from normal runtime startup.
-- [infrastructure/docker/docker-compose.observability.yml](infrastructure/docker/docker-compose.observability.yml) enables optional Seq-based observability without changing the default local startup path.
-- [infrastructure/docker/README.md](infrastructure/docker/README.md) documents the local startup and migration workflow.
-
-## End-to-End Request and Event Flow
-
-### Claims Submission Flow
-
-1. HTTP request enters [services/claims-service/ClaimsService.API/Controllers/ClaimsController.cs](services/claims-service/ClaimsService.API/Controllers/ClaimsController.cs).
-2. The controller sends `SubmitClaimCommand` through MediatR.
-3. MediatR resolves [services/claims-service/ClaimsService.Application/Handlers/SubmitClaimCommandHandler.cs](services/claims-service/ClaimsService.Application/Handlers/SubmitClaimCommandHandler.cs).
-4. The handler creates a domain `Claim` via [services/claims-service/ClaimsService.Domain/Entities/Claim.cs](services/claims-service/ClaimsService.Domain/Entities/Claim.cs).
-5. The handler stages the entity via `IClaimRepository`.
-6. The handler publishes the shared contract `ClaimSubmitted` from [building-blocks/contracts/BuildingBlocks.Contracts/Claims/ClaimSubmitted.cs](building-blocks/contracts/BuildingBlocks.Contracts/Claims/ClaimSubmitted.cs).
-7. The handler commits through `IUnitOfWork`.
-
-This keeps the controller thin and makes the handler the application-level coordinator.
-
-### Notification Processing Flow
-
-1. MassTransit receives `ClaimSubmitted` through RabbitMQ.
-2. [services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs](services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs) consumes the message.
-3. The consumer maps the message to `CreateNotificationCommand` and sends it via MediatR.
-4. [services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs](services/notification-service/NotificationService.Application/Commands/CreateNotification/CreateNotificationCommandHandler.cs) checks for duplicates, creates a domain `Notification`, persists it, and commits.
-5. [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcher.cs) polls pending notifications using configurable `PollIntervalSeconds` and `BatchSize` from [services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcherOptions.cs](services/notification-service/NotificationService.Infrastructure/Workers/NotificationDispatcherOptions.cs).
-6. [services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs](services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs) uses `FOR UPDATE SKIP LOCKED` so multiple dispatcher instances can claim work safely.
-7. The dispatcher selects the appropriate sender, currently [services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs](services/notification-service/NotificationService.Infrastructure/Senders/EmailSender.cs).
-8. The notification is marked sent, retried with exponential backoff, or marked failed.
-
-This split is architecturally useful because event consumption and actual notification delivery are decoupled.
-
-### Document Upload Flow
-
-1. HTTP request enters [services/document-service/DocumentService.API/Controllers/DocumentsController.cs](services/document-service/DocumentService.API/Controllers/DocumentsController.cs).
-2. The controller sends `GenerateUploadUrlCommand` through MediatR.
-3. [services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommandHandler.cs](services/document-service/DocumentService.Application/Commands/GenerateUploadUrlCommandHandler.cs) builds the object key and requests a presigned upload URL from [services/document-service/DocumentService.Infrastructure/Storage/MinioObjectStorage.cs](services/document-service/DocumentService.Infrastructure/Storage/MinioObjectStorage.cs).
-4. The client uploads the file directly to MinIO using the presigned URL.
-5. MinIO publishes a raw object-created notification to RabbitMQ.
-6. [services/document-service/DocumentService.Infrastructure/Messaging/ObjectCreatedConsumer.cs](services/document-service/DocumentService.Infrastructure/Messaging/ObjectCreatedConsumer.cs) consumes the raw RabbitMQ notification, creates the `Document` entity, and writes an `OutboxMessage` row in the same database transaction.
-7. [services/document-service/DocumentService.Infrastructure/Messaging/OutboxDispatcher.cs](services/document-service/DocumentService.Infrastructure/Messaging/OutboxDispatcher.cs) polls pending outbox rows and hands them to [services/document-service/DocumentService.Infrastructure/Messaging/RabbitPublisher.cs](services/document-service/DocumentService.Infrastructure/Messaging/RabbitPublisher.cs).
-8. The raw `DocumentUploaded` JSON message is published to RabbitMQ on the configured exchange.
-9. ClaimsService receives that raw message through [services/claims-service/ClaimsService.Infrastructure/Messaging/DocumentUploadedBridgeConsumer.cs](services/claims-service/ClaimsService.Infrastructure/Messaging/DocumentUploadedBridgeConsumer.cs), converts it back into the typed `DocumentUploaded` contract, and republishes it internally through MassTransit.
-10. [services/claims-service/ClaimsService.Application/Sagas/ClaimProcessingSagaStateMachine.cs](services/claims-service/ClaimsService.Application/Sagas/ClaimProcessingSagaStateMachine.cs) consumes the typed `DocumentUploaded` event and advances the claim workflow.
-
-## MediatR In This Solution
-
-MediatR is used for in-process use-case dispatch.
-
-Claims service registration is in [services/claims-service/ClaimsService.API/Program.cs](services/claims-service/ClaimsService.API/Program.cs).
-Notification service registration is in [services/notification-service/NotificationService.API/Program.cs](services/notification-service/NotificationService.API/Program.cs).
-
-How it works here:
-
-- controllers send commands to handlers
-- consumers also send commands to handlers
-- handlers encapsulate one use case each
-
-Architectural value:
-
-- consistent use-case entry model regardless of transport
-- thinner controllers and consumers
-- improved testability because business orchestration is centralized
-
-In short:
-
-- MediatR handles in-process flow
-- MassTransit handles inter-service flow
-
-## MassTransit In This Solution
-
-MassTransit is used for asynchronous service-to-service integration over RabbitMQ.
-
-Claims service producer side:
-
-- configuration in [services/claims-service/ClaimsService.API/Program.cs](services/claims-service/ClaimsService.API/Program.cs)
-- publish abstraction implemented in [services/claims-service/ClaimsService.Infrastructure/Messaging/EventPublisher.cs](services/claims-service/ClaimsService.Infrastructure/Messaging/EventPublisher.cs)
-
-Notification service consumer side:
-
-- configuration in [services/notification-service/NotificationService.API/Program.cs](services/notification-service/NotificationService.API/Program.cs)
-- consumer in [services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs](services/notification-service/NotificationService.Infrastructure/Messaging/Consumers/ClaimSubmittedConsumer.cs)
-
-Claims service raw-message adapter side:
-
-- bridge endpoint configuration in [services/claims-service/ClaimsService.API/Program.cs](services/claims-service/ClaimsService.API/Program.cs)
-- raw-to-typed adapter in [services/claims-service/ClaimsService.Infrastructure/Messaging/DocumentUploadedBridgeConsumer.cs](services/claims-service/ClaimsService.Infrastructure/Messaging/DocumentUploadedBridgeConsumer.cs)
-
-Important architectural point:
-
-The claims service configures the MassTransit Entity Framework outbox in [services/claims-service/ClaimsService.API/Program.cs](services/claims-service/ClaimsService.API/Program.cs), and the outbox entities are added in [services/claims-service/ClaimsService.Infrastructure/Persistance/ClaimsDbContext.cs](services/claims-service/ClaimsService.Infrastructure/Persistance/ClaimsDbContext.cs). This reduces the risk of saving a claim successfully while losing the outgoing event.
-
-The notification service then consumes the event and converts it back into an application command. That adapter pattern is one of the cleanest design choices in the current solution.
-
-DocumentService is now the main exception to the MassTransit-only integration style. It deliberately uses a custom RabbitMQ consumer and custom outbox publisher at the MinIO boundary, then ClaimsService re-enters the normal MassTransit path through a bridge consumer. This isolates raw external message handling to a narrow integration boundary instead of pushing raw transport concerns into the saga.
-
-The notification dispatcher now also uses row locking with `FOR UPDATE SKIP LOCKED`, which makes the database-backed queue pattern safer to scale horizontally than a simple polling query.
-
-## Repository Pattern In This Solution
-
-The repository pattern is implemented as a thin abstraction over EF Core.
-
-Claims service:
-
-- interface in [services/claims-service/ClaimsService.Application/Interfaces/IClaimRepository.cs](services/claims-service/ClaimsService.Application/Interfaces/IClaimRepository.cs)
-- implementation in [services/claims-service/ClaimsService.Infrastructure/Repositories/ClaimRepository.cs](services/claims-service/ClaimsService.Infrastructure/Repositories/ClaimRepository.cs)
-- commit boundary in [services/claims-service/ClaimsService.Infrastructure/Persistance/EfUnitOfWork.cs](services/claims-service/ClaimsService.Infrastructure/Persistance/EfUnitOfWork.cs)
-
-Notification service:
-
-- interface in [services/notification-service/NotificationService.Application/Interfaces/INotificationRepository.cs](services/notification-service/NotificationService.Application/Interfaces/INotificationRepository.cs)
-- implementation in [services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs](services/notification-service/NotificationService.Infrastructure/Persistence/Repositories/NotificationRepository.cs)
-- commit boundary in [services/notification-service/NotificationService.Infrastructure/Persistence/EfUnitOfWork.cs](services/notification-service/NotificationService.Infrastructure/Persistence/EfUnitOfWork.cs)
-
-How it behaves:
-
-- repositories stage adds and queries against `DbContext`
-- notification work acquisition is infrastructure-specific and currently uses SQL row locking to avoid duplicate dispatch across workers
-- the unit of work performs `SaveChangesAsync`
-- handlers coordinate repository calls and commit when the use case is complete
-
-This is a lightweight repository pattern. It keeps EF Core outside the application layer without introducing unnecessary complexity.
-
-## Shared Contracts And Building Blocks
-
-[building-blocks/contracts/BuildingBlocks.Contracts/Claims/ClaimSubmitted.cs](building-blocks/contracts/BuildingBlocks.Contracts/Claims/ClaimSubmitted.cs) is the integration contract published by claims service and consumed by notification service.
-
-Why this contract belongs in shared building blocks:
-
-- producer and consumer share a stable message schema
-- services do not reference each other directly
-- integration remains explicit and versionable
-
-This is a standard microservice integration practice and a good architectural choice.
-
-## Current Strengths
-
-- clear layer separation
-- thin controllers and consumers
-- domain entities enforce core state transitions
-- MediatR standardizes application use-case entry points
-- MassTransit decouples services asynchronously
-- claims service uses outbox support for more reliable event publication
-- document service uses a custom transactional outbox for document notifications sourced from raw MinIO events
-- notification service separates persistence from delivery through a background dispatcher
-- claims service protects its saga from raw document payloads through a dedicated bridge consumer
-- health, readiness, and liveness endpoints are now present on both APIs for container-oriented operation
-- local Docker workflow separates runtime, migrations, and optional observability into distinct compose files
-- notification dispatch supports configurable batch size, row locking, and bounded retry backoff
-
-## Current Gaps And Risks To Watch
-
-- the repository pattern is intentionally thin; if use cases grow, query complexity may start to leak into handlers unless query patterns are formalized
-- the claims service uses an application-orchestrated event publishing style rather than domain events; this is fine now, but richer domain workflows may push toward aggregate-raised domain events later
-- naming is mostly consistent, but `Persistance` in claims service is misspelled; it is harmless technically but worth correcting before the codebase grows further
-- notification dispatch currently logs email sending rather than integrating a real provider; that is expected, but production delivery concerns are still open
-- notification service currently relies on polling for dispatch; `FOR UPDATE SKIP LOCKED` improves safety, but throughput and latency expectations should still be revisited as volume grows
-- document-service and claims-service now depend on a shared exchange name and compatible raw JSON schema at the bridge boundary; that transport contract must be managed carefully
-- the local logging story is pragmatic rather than fully centralized: both APIs can publish to Seq, but Seq is intentionally opt-in through a separate compose file so default startup stays simple and resilient
-- Seq delivery is intentionally non-buffered, so optional observability does not accumulate local buffer files if Seq is deliberately offline
-- local startup now assumes schema is already migrated; that is cleaner operationally, but the separate migrations compose workflow must be followed on a fresh volume
-
-## Architectural Summary
-
-The current solution is a solid early-stage architecture for an event-driven modular system:
-
-- HTTP enters through the API layer
-- application handlers coordinate use cases through MediatR
-- domain entities protect business rules
-- infrastructure implements storage and messaging concerns
-- MassTransit connects services asynchronously using shared contracts
-- repositories and unit of work abstract EF Core from the application layer
-- both APIs expose health endpoints suitable for container probes
-- local Docker infrastructure supports explicit migration runs through a separate one-shot migrations compose file
-
-The design is pragmatic, understandable, and suitable for incremental growth if the current boundaries are maintained.
-
-## Suggested Maintenance Approach
-
-Keep this document updated whenever one of the following changes occurs:
-
-- a new service is added
-- a new cross-service event is introduced
-- a new background worker or integration adapter is added
-- a layer boundary changes
-- a reliability pattern such as inbox, outbox, saga, or retries is added or changed
+- message transport wiring changes
+- saga transitions or contracts change
+- storage mode defaults change
+- health/readiness semantics change
+- observability exporter behavior changes

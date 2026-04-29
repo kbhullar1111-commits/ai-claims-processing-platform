@@ -1,251 +1,199 @@
 
-# AI Claims Processing Platform — Architecture Decision Records (ADR)
+# AI Claims Processing Platform - Architecture Decision Records (ADR)
 
-Date Generated: 2026-03-15
+Date Generated: 2026-04-28
 
 Status Legend:
-- Implemented: reflected in the current workspace
-- Planned: intended direction, not yet wired in the current workspace
+- Implemented: reflected in current workspace code
+- Planned: intended direction, not yet fully wired
 
 ## System Overview
-Financial Claims Processing Platform built as an event‑driven microservices architecture using .NET, RabbitMQ, PostgreSQL, and selective MassTransit usage.
-Long‑term goal: Azure‑native deployment with AI‑enabled services.
+Financial claims platform built with .NET microservices, PostgreSQL, Azure Service Bus, and OpenTelemetry/Application Insights.
+
+The local compose stack now runs only steady-state runtime dependencies in the base file. Optional observability tooling (Seq, Jaeger, Prometheus, Grafana) is enabled via overlay compose.
 
 ---
 
-# ADR‑001 — Event‑Driven Microservices Architecture
+# ADR-001 - Event-Driven Microservices Architecture
 Status: Implemented
 
 Decision:
-Services communicate primarily using asynchronous events over RabbitMQ.
+Services communicate asynchronously through integration events.
+
+Current Implementation Note:
+- Claims, Notification, Fraud, and Payment services use MassTransit on Azure Service Bus.
+- Document service uses HTTP plus storage integration and can run an internal raw RabbitMQ-style bridge path only when MinIO mode is enabled.
 
 Reason:
 - Loose coupling
-- Horizontal scalability
-- Event‑driven workflows
+- Independent service scaling
+- Resilient workflow progression
 
-Alternatives Considered:
-- Synchronous REST between services
-- Shared database
+---
 
-Outcome:
-RabbitMQ acts as the event backbone.
+# ADR-002 - Transactional Outbox Pattern
+Status: Implemented
+
+Decision:
+Use transactional outbox for reliable event publication where needed.
 
 Current Implementation Note:
-- ClaimsService, NotificationService, and other internal service-to-service flows still use MassTransit over RabbitMQ
-- DocumentService now uses a custom RabbitMQ ingress consumer plus a custom database-backed outbox and publisher for document events
-- ClaimsService includes a bridge consumer so raw `DocumentUploaded` messages from DocumentService are converted back into the normal typed MassTransit contract before reaching the saga
-
----
-
-# ADR‑002 — Transactional Outbox Pattern
-Status: Implemented
-
-Decision:
-Use a transactional outbox pattern for reliable event publication.
+- Claims service uses MassTransit EF outbox (`UseBusOutbox`).
+- Document service persists document + outbox in one transaction for its custom publisher path.
 
 Reason:
-Guarantee atomicity between database write and event publish.
-
-Problem Solved:
-Prevent lost events when DB commit succeeds but message publish fails.
-
-Current Implementation Note:
-- ClaimsService uses the MassTransit Entity Framework outbox
-- DocumentService uses a custom `OutboxMessages` table, a background dispatcher, and a raw RabbitMQ publisher
-- In DocumentService, the `Document` row and outgoing `DocumentUploaded` outbox row are committed in the same database transaction
+Prevents lost messages when DB commit and broker publish happen at different times.
 
 ---
 
-# ADR‑003 — Idempotent Consumers
+# ADR-003 - Idempotent Notification Creation
 Status: Implemented
 
 Decision:
-NotificationService enforces UNIQUE(EventId, Channel).
+Notification processing keeps idempotency safeguards so duplicate events do not create duplicate notifications.
 
 Reason:
-RabbitMQ provides at‑least‑once delivery; consumers must tolerate duplicates.
-
-Outcome:
-Duplicate events will not create duplicate notifications.
+At-least-once delivery semantics require duplicate-safe consumers.
 
 ---
 
-# ADR‑004 — Database Work Queue Pattern
+# ADR-004 - Database Work Queue Pattern
 Status: Implemented
 
 Decision:
-Notification processing uses a database‑backed queue (notifications table).
+Notification dispatch uses a DB-backed queue with lifecycle state.
 
-Key Fields:
+Queue State Fields:
 - Status
 - RetryCount
 - NextRetryAt
 
 Benefits:
 - Reliable background processing
-- Retry scheduling
-- Failure handling
+- Controlled retries
+- Operational visibility
 
 ---
 
-# ADR‑005 — Competing Consumers Using Row Locking
+# ADR-005 - Competing Consumers With Row Locking
 Status: Implemented
 
 Decision:
-PostgreSQL query uses FOR UPDATE SKIP LOCKED.
+Notification dispatcher acquires work via `FOR UPDATE SKIP LOCKED`.
 
 Reason:
-Allow multiple dispatcher workers to process notifications safely without duplication.
-
-Outcome:
-Supports horizontal scaling when multiple containers run in Kubernetes.
+Allows multiple workers to process pending notifications safely without double handling.
 
 ---
 
-# ADR‑006 — Retry with Exponential Backoff
+# ADR-006 - Retry With Exponential Backoff
 Status: Implemented
 
 Decision:
-Retry delay increases exponentially using 2^RetryCount.
+Notification retry scheduling increases delay as attempts grow.
 
 Reason:
-Prevent hammering downstream systems such as SMTP providers.
+Reduces load on external providers during failure windows.
 
 ---
 
-# ADR‑007 — Notification Strategy Pattern
+# ADR-007 - Notification Sender Strategy
 Status: Implemented
 
 Decision:
-Notification delivery implemented via INotificationSender strategy pattern.
-
-Implementations:
-- EmailSender
-- SmsSender (future)
-- PushSender (future)
-
-Benefit:
-Extensible notification delivery channels.
-
----
-
-# ADR‑008 — Structured Logging
-Status: Implemented
-
-Decision:
-Use Serilog for structured logging.
-
-Current Local Implementation:
-- Console logging is enabled
-- Rolling file logging is enabled for NotificationService
-- Seq remains an optional troubleshooting sink and is enabled through a separate observability compose file plus configuration overrides
-- Seq delivery is intentionally non-buffered, so leaving Seq enabled while it is offline does not build up local buffer files
-
-Future Observability:
-- Seq for centralized logging
-- Azure Monitor in cloud deployment
-
----
-
-# ADR‑009 — Observability via OpenTelemetry
-Status: Implemented
-
-Decision:
-Adopt OpenTelemetry for distributed tracing.
-
-Local Development Backend:
-Jaeger
-
-Future Cloud Backend:
-Azure Application Insights / Azure Monitor
-
-Purpose:
-Trace request flows across microservices.
-
-Current Note:
-OpenTelemetry is wired in the API startup code across the active services, with OTLP export and Prometheus scraping enabled in local development.
-
----
-
-# ADR‑010 — Health Checks for Container Environments
-Status: Implemented
-
-Decision:
-Expose /health, /ready, and /live endpoints using ASP.NET Core HealthChecks.
-
-Reason:
-Enable Kubernetes readiness and liveness probes.
+Use `INotificationSender` strategy abstraction.
 
 Current Implementation:
-- `/live` reports process liveness
-- `/ready` checks database connectivity
-- `/health` exposes the combined health view
+- Email sender is active
+- SMS and push are extension points
 
 ---
 
-# ADR‑011 — On‑Demand Database Migrations In Docker Compose
+# ADR-008 - Structured Logging and AI Telemetry
 Status: Implemented
 
 Decision:
-Keep migrator containers in a separate Docker Compose file instead of the base runtime compose file.
+Use Serilog with Application Insights sink and console logging across APIs.
 
-Reason:
-- Preserve a reproducible containerized migration workflow
-- Avoid coupling normal API startup to one-shot migration jobs
-- Keep local startup faster and easier to troubleshoot
-
-Outcome:
-- `docker compose up -d` starts the steady-state local stack
-- `docker compose -f docker-compose.yml -f docker-compose.migrations.yml up claims-migrator notification-migrator` applies pending migrations when needed
+Current Implementation Note:
+- Notification service also writes rolling local files.
+- Optional Seq sink is enabled only through overlay configuration.
 
 ---
 
-# ADR‑012 — Optional Observability Stack For Local Development
+# ADR-009 - OpenTelemetry With Conditional OTLP Export
 Status: Implemented
 
 Decision:
-Keep Seq outside the base local compose stack and enable it only through a separate observability compose file.
+OpenTelemetry tracing/metrics are enabled across services, but OTLP exporter is added only when endpoint configuration is provided.
+
+Runtime Behavior:
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (or `Observability:Otlp:Endpoint`) controls whether exporter is wired.
+- Base compose does not set this endpoint.
+- Observability overlay sets OTLP endpoint to Jaeger.
 
 Reason:
-- Normal local startup should not depend on optional tooling
-- Services should continue running when Seq is absent
-- Observability tooling should be easy to enable when investigation is needed
-
-Outcome:
-- Base startup uses `docker compose up -d`
-- Seq is enabled with `docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d`
-- Both APIs keep Seq disabled by default through configuration, so missing Seq does not break service startup
-- Seq shipping is non-buffered by design, so optional observability does not build up local disk buffers when Seq is intentionally offline
+Avoid unintended default OTLP traffic when optional observability stack is not running.
 
 ---
 
-# Long‑Term Cloud Architecture (Target)
-Local Development Stack:
-- RabbitMQ
-- PostgreSQL
-- Docker Compose
-- Health endpoints on both APIs
-- Optional Seq when troubleshooting is needed
+# ADR-010 - Health Probes for Containerized Services
+Status: Implemented
 
-Future Azure Stack:
+Decision:
+Expose `/health`, `/live`, and `/ready` endpoints.
+
+Current Implementation:
+- Claims/Notification/Document: readiness checks include Postgres reachability.
+- Fraud/Payment: current readiness is self-check based.
+
+---
+
+# ADR-011 - Migrations Kept Separate From Normal Runtime Startup
+Status: Implemented
+
+Decision:
+Run migrations outside base runtime startup.
+
+Current Workflow:
+- Base stack startup remains focused on API/runtime containers.
+- Separate migration compose file exists.
+- Primary helper script currently runs `dotnet ef database update` locally for claims, notification, and document DBs.
+
+---
+
+# ADR-012 - Optional Observability Overlay
+Status: Implemented
+
+Decision:
+Use `docker-compose.observability.yml` overlay for local observability stack.
+
+Included Components:
+- Seq
+- Jaeger (OTLP collector)
+- Prometheus
+- Grafana
+
+Outcome:
+- Base startup remains minimal.
+- Deep diagnostics can be enabled on demand without changing app code.
+
+---
+
+# Long-Term Cloud Direction
+Target stack remains Azure-native:
 - Azure Service Bus
-- Azure PostgreSQL
-- Azure Kubernetes Service (AKS)
-- Azure Monitor
-- Azure AI Services
+- Azure Database for PostgreSQL
+- Azure Monitor / Application Insights
+- AKS or managed container hosting
+- AI-enabled claim workflows
 
 ---
 
 # Future AI Integration
-Planned AI capabilities:
-- Document OCR
+Planned capabilities:
+- OCR and document extraction
 - Document classification
-- Fraud detection models
-- Retrieval Augmented Generation (RAG) for policy knowledge
-- AI‑assisted claim assessment
-
-Primary AI‑enabled services:
-- DocumentService
-- FraudService
-- AssessmentService
+- Fraud scoring
+- Retrieval-augmented policy guidance
+- Assisted claim adjudication

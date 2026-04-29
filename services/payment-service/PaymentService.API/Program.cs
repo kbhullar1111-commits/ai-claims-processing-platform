@@ -5,6 +5,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
+using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +53,7 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint(paymentServiceQueue, e =>
         {
             e.ConfigureConsumeTopology = false;
+            e.UseInMemoryOutbox(context);
             e.ConfigureConsumer<ProcessPaymentConsumer>(context);
         });
         
@@ -60,6 +62,8 @@ builder.Services.AddMassTransit(x =>
 });
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
+var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+    ?? builder.Configuration["Observability:Otlp:Endpoint"];
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProvider =>
@@ -77,8 +81,15 @@ builder.Services.AddOpenTelemetry()
             .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService("PaymentService"))
-            .AddOtlpExporter();
+                    .AddService("PaymentService"));
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracerProvider.AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri(otlpEndpoint);
+            });
+        }
     });
 
 var app = builder.Build();

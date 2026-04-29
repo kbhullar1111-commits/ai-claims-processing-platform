@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Azure.Messaging.ServiceBus;
 using Serilog;
 using Serilog.Events;
+using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = FunctionsApplication.CreateBuilder(args);

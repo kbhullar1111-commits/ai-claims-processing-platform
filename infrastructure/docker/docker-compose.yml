@@ -80,7 +80,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=claimsdb;Username=postgres;Password=postgres
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION_STRING}
-      ApplicationInsights__ConnectionString: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+      ApplicationInsights__ConnectionString: ${APPINSIGHTS_CONNECTION_STRING}
       # RabbitMq__Host: rabbitmq
       # RabbitMq__Username: claimsuser
       # RabbitMq__Password: claimspassword
@@ -112,7 +112,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=notificationdb;Username=postgres;Password=postgres
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION_STRING}
-      APPLICATIONINSIGHTS_CONNECTION_STRING: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+      APPLICATIONINSIGHTS_CONNECTION_STRING: ${APPINSIGHTS_CONNECTION_STRING}
       # RabbitMq__Host: rabbitmq
       # RabbitMq__Username: claimsuser
       # RabbitMq__Password: claimspassword
@@ -148,7 +148,7 @@ services:
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION_STRING}
       ConnectionStrings__BlobStorage: ${BLOB_STORAGE_CONNECTION_STRING}
       Storage__ContainerName: claim-documents
-      ApplicationInsights__ConnectionString: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+      ApplicationInsights__ConnectionString: ${APPINSIGHTS_CONNECTION_STRING}
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,7 +172,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION_STRING}
-      ApplicationInsights__ConnectionString: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+      ApplicationInsights__ConnectionString: ${APPINSIGHTS_CONNECTION_STRING}
       # RabbitMq__Host: rabbitmq
       # RabbitMq__Username: claimsuser
       # RabbitMq__Password: claimspassword
@@ -199,7 +199,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION_STRING}
-      ApplicationInsights__ConnectionString: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+      ApplicationInsights__ConnectionString: ${APPINSIGHTS_CONNECTION_STRING}
       # RabbitMq__Host: rabbitmq
       # RabbitMq__Username: claimsuser
       # RabbitMq__Password: claimspassword

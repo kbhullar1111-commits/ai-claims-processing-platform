@@ -18,14 +18,10 @@ public class RequestDocumentsConsumer : IConsumer<RequestDocuments>
         var message = context.Message;
 
         _logger.LogInformation(
-            "RequestDocuments received for ClaimId: {ClaimId} CustomerId: {CustomerId}",
+            "RequestDocuments received for ClaimId: {ClaimId} CustomerId: {CustomerId} Required Documents: {Documents}",
             message.ClaimId,
-            message.CustomerId);
-
-        foreach (var doc in message.Documents)
-        {
-            _logger.LogInformation("Required document: {Document}", doc);
-        }
+            message.CustomerId,
+            string.Join(", ", message.Documents));
 
         // Later:
         // send email

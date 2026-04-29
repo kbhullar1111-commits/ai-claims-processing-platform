@@ -22,6 +22,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
+using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using System.Reflection;
 
@@ -179,6 +180,8 @@ builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddSingleton<IClaimsMetrics, ClaimsMetrics>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
+var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+    ?? builder.Configuration["Observability:Otlp:Endpoint"];
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProvider =>
@@ -197,8 +200,15 @@ builder.Services.AddOpenTelemetry()
             .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService(TelemetryConstants.ServiceName))
-            .AddOtlpExporter();
+                    .AddService(TelemetryConstants.ServiceName));
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracerProvider.AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri(otlpEndpoint);
+            });
+        }
     })
     .WithMetrics(metrics =>
     {

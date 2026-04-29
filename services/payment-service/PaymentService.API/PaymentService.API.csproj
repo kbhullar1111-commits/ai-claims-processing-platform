@@ -17,7 +17,8 @@
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Enrichers.Span" Version="3.1.0" />
-    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.1.2" />
+    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="5.0.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
   </ItemGroup>
 
   <ItemGroup>

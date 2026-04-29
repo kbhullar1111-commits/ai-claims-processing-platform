@@ -149,48 +149,60 @@ public class ClaimProcessingSagaStateMachine :
         );
 
         During(FraudCheckRunning,
+            Ignore(DocumentUploaded),
             When(FraudCheckCompleted)
-                .Then(context =>
-                {
-                    context.Saga.FraudRiskScore = context.Message.RiskScore;
-                    context.Saga.IsFraudulent = context.Message.IsFraudulent;
-                    context.Saga.FraudReason = context.Message.Reason;
-                    context.Saga.FraudEvaluatedAt = context.Message.EvaluatedAt;
-
-                    _logger.LogInformation(
-                        "Fraud check result received. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, IsFraudulent={IsFraudulent}",
-                        context.Saga.CorrelationId,
-                        context.Saga.ClaimId,
-                        context.Message.RiskScore,
-                        context.Message.IsFraudulent);
-                })
-                .IfElse(context => context.Message.RiskScore >= 0.8m
-                                || context.Message.IsFraudulent,
+                .IfElse(context => context.Saga.FraudEvaluatedAt.HasValue,
                     thenBinder => thenBinder
                         .Then(context => _logger.LogWarning(
-                            "Claim rejected due to fraud. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, Reason={Reason}",
+                            "Duplicate FraudCheckCompleted ignored. SagaId={SagaId}, ClaimId={ClaimId}, EvaluatedAt={EvaluatedAt}",
                             context.Saga.CorrelationId,
                             context.Saga.ClaimId,
-                            context.Saga.FraudRiskScore,
-                            context.Saga.FraudReason))
-                        .Send(_claimsServiceQueueUri,
-                                    ctx => new MarkClaimRejected(
-                                        ctx.Saga.ClaimId,
-                                        ctx.Message.Reason))
-                        .Finalize(),
+                            context.Saga.FraudEvaluatedAt)),
                     elseBinder => elseBinder
-                        .Then(context => _logger.LogInformation(
-                            "Fraud check passed, initiating payment. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}",
-                            context.Saga.CorrelationId,
-                            context.Saga.ClaimId,
-                            context.Saga.ClaimAmount))
-                        .Send(_paymentServiceQueueUri,
-                            context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
-                        .TransitionTo(PaymentProcessing)
+                        .Then(context =>
+                        {
+                            context.Saga.FraudRiskScore = context.Message.RiskScore;
+                            context.Saga.IsFraudulent = context.Message.IsFraudulent;
+                            context.Saga.FraudReason = context.Message.Reason;
+                            context.Saga.FraudEvaluatedAt = context.Message.EvaluatedAt;
+
+                            _logger.LogInformation(
+                                "Fraud check result received. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, IsFraudulent={IsFraudulent}",
+                                context.Saga.CorrelationId,
+                                context.Saga.ClaimId,
+                                context.Message.RiskScore,
+                                context.Message.IsFraudulent);
+                        })
+                        .IfElse(context => context.Message.RiskScore >= 0.8m
+                                        || context.Message.IsFraudulent,
+                            thenInnerBinder => thenInnerBinder
+                                .Then(context => _logger.LogWarning(
+                                    "Claim rejected due to fraud. SagaId={SagaId}, ClaimId={ClaimId}, RiskScore={RiskScore}, Reason={Reason}",
+                                    context.Saga.CorrelationId,
+                                    context.Saga.ClaimId,
+                                    context.Saga.FraudRiskScore,
+                                    context.Saga.FraudReason))
+                                .Send(_claimsServiceQueueUri,
+                                            ctx => new MarkClaimRejected(
+                                                ctx.Saga.ClaimId,
+                                                ctx.Message.Reason))
+                                .Finalize(),
+                            elseInnerBinder => elseInnerBinder
+                                .Then(context => _logger.LogInformation(
+                                    "Fraud check passed, initiating payment. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}",
+                                    context.Saga.CorrelationId,
+                                    context.Saga.ClaimId,
+                                    context.Saga.ClaimAmount))
+                                .Send(_paymentServiceQueueUri,
+                                    context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
+                                .TransitionTo(PaymentProcessing)
+                        )
                 )
         );
 
         During(PaymentProcessing,
+            Ignore(DocumentUploaded),
+            Ignore(FraudCheckCompleted),
             When(PaymentProcessed)
                 .IfElse(context => !context.Message.Success,
                     thenBinder => thenBinder
