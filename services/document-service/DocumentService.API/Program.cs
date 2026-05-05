@@ -4,22 +4,16 @@ using DocumentService.Application.Interfaces;
 using DocumentService.Application.Commands;
 using DocumentService.Infrastructure.Persistence;
 using DocumentService.Infrastructure.Storage;
-using DocumentService.Infrastructure.Messaging;
-using MediatR;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
-using Minio;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Metrics;
 using Serilog;
 using Serilog.Events;
 using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Reflection;
-using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,25 +21,27 @@ var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
 
 if (!string.IsNullOrEmpty(keyVaultEndpoint))
 {
-    builder.Configuration.AddAzureKeyVault(
-        new Uri(keyVaultEndpoint),
-        new azureidentity::Azure.Identity.DefaultAzureCredential());
-}
+    try
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultEndpoint),
+            new azureidentity::Azure.Identity.DefaultAzureCredential());
 
-var blobStorageConnectionString = builder.Configuration.GetConnectionString("BlobStorage");
-var useAzureBlobStorage = !string.IsNullOrWhiteSpace(blobStorageConnectionString);
+        builder.Configuration.AddEnvironmentVariables();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Key Vault is unavailable. Continuing with local configuration sources. Reason: {ex.Message}");
+    }
+}
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
-    var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
-    var seqUrl = context.Configuration["Observability:Seq:Url"];
-
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
         .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-        .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
         .Enrich.FromLogContext()
         .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "DocumentService.API")
@@ -81,45 +77,6 @@ builder.Services.AddMediatR(cfg =>
         typeof(GenerateUploadUrlCommand).Assembly);
 });
 
-if (!useAzureBlobStorage)
-{
-    builder.Services.Configure<ObjectStorageOptions>(
-    builder.Configuration.GetSection("ObjectStorage"));
-    builder.Services.Configure<RabbitMqOptions>(
-        builder.Configuration.GetSection(RabbitMqOptions.SectionName));
-        
-    builder.Services.AddSingleton<IMinioClient>(sp =>
-    {
-        var options = sp
-            .GetRequiredService<IOptions<ObjectStorageOptions>>()
-            .Value;
-
-        return new MinioClient()
-            .WithEndpoint(options.Endpoint)
-            .WithCredentials(options.AccessKey, options.SecretKey)
-            .WithSSL(options.UseSsl)
-            .Build();
-    });
-}
-
-// builder.Services.AddScoped<IObjectStorage>(sp =>
-// {
-//     var options = sp
-//         .GetRequiredService<IOptions<ObjectStorageOptions>>()
-//         .Value;
-
-//     // Use a separate client for presigned URLs pointing at the public endpoint
-//     // so browsers can reach MinIO directly (not the internal Docker hostname).
-//     var publicEndpoint = options.PublicEndpoint ?? options.Endpoint;
-//     var presignClient = new MinioClient()
-//         .WithEndpoint(publicEndpoint)
-//         .WithCredentials(options.AccessKey, options.SecretKey)
-//         .WithSSL(options.UseSsl)
-//         .Build();
-
-//     return new MinioObjectStorage(presignClient, options.Bucket);
-// });
-
 builder.Services.AddScoped<IObjectStorage>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -135,19 +92,7 @@ builder.Services.AddScoped<IObjectStorage>(sp =>
         containerName!);
 });
 
-// The custom messaging flow is split into two background services:
-// 1. ObjectCreatedConsumer ingests raw MinIO notifications and writes document + outbox rows.
-// 2. OutboxDispatcher reads pending outbox rows and publishes them to RabbitMQ.
-if (!useAzureBlobStorage)
-{
-    builder.Services.AddHostedService<ObjectCreatedConsumer>();
-    builder.Services.AddHostedService<OutboxDispatcher>();
-    builder.Services.AddSingleton<RabbitPublisher>();
-}
-
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
-var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    ?? builder.Configuration["Observability:Otlp:Endpoint"];
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProvider =>
@@ -166,70 +111,9 @@ builder.Services.AddOpenTelemetry()
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService("DocumentService"));
-
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-        {
-            tracerProvider.AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(otlpEndpoint);
-            });
-        }
-    })
-    .WithMetrics(metrics =>
-    {
-        metrics
-            .AddAspNetCoreInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddPrometheusExporter();
     });
 
 var app = builder.Build();
-
-if (!useAzureBlobStorage)
-{
-    using var scope = app.Services.CreateScope();
-    var client = scope.ServiceProvider
-        .GetRequiredService<IMinioClient>();
-
-    var options = scope.ServiceProvider
-        .GetRequiredService<IOptions<ObjectStorageOptions>>()
-        .Value;
-
-    var rabbitMqOptions = scope.ServiceProvider
-        .GetRequiredService<IOptions<RabbitMqOptions>>()
-        .Value;
-
-    var logger = scope.ServiceProvider
-        .GetRequiredService<ILoggerFactory>()
-        .CreateLogger("DocumentService.MinioStartup");
-
-    const int maxAttempts = 6;
-
-    for (var attempt = 1; attempt <= maxAttempts; attempt++)
-    {
-        try
-        {
-            await MinioBucketInitializer.EnsureBucketConfigured(
-                client,
-                options.Bucket,
-                rabbitMqOptions.MinioNotificationArn);
-            break;
-        }
-        catch (Exception ex) when (ex is HttpRequestException || ex.InnerException is HttpRequestException)
-        {
-            if (attempt == maxAttempts)
-                throw;
-
-            logger.LogWarning(
-                ex,
-                "MinIO bucket initialization failed on attempt {Attempt}/{MaxAttempts}. Retrying...",
-                attempt,
-                maxAttempts);
-
-            await Task.Delay(TimeSpan.FromSeconds(5));
-        }
-    }
-}
 
 if (app.Environment.IsDevelopment())
 {
@@ -253,8 +137,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
-
-app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
 

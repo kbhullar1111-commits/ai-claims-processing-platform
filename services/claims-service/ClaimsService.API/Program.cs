@@ -34,11 +34,13 @@ var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
 
 if (!string.IsNullOrEmpty(keyVaultEndpoint))
 {
-        try
+    try
     {
         builder.Configuration.AddAzureKeyVault(
             new Uri(keyVaultEndpoint),
             new azureidentity::Azure.Identity.DefaultAzureCredential());
+
+        builder.Configuration.AddEnvironmentVariables();
     }
     catch (Exception ex)
     {
@@ -63,9 +65,6 @@ if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
-    var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
-    var seqUrl = context.Configuration["Observability:Seq:Url"];
-
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
         .MinimumLevel.Information()
@@ -171,19 +170,6 @@ builder.Services.AddMassTransit(x =>
             r.Interval(5, TimeSpan.FromMilliseconds(500));
         });
 
-        // DO NOT add RabbitMQ raw bridge endpoint here yet
-        // var documentUploadedExchange = builder.Configuration["Messaging:DocumentUploaded:ExchangeName"] ?? "document-uploaded";
-        // var documentUploadedQueue = builder.Configuration["Messaging:DocumentUploaded:QueueName"] ?? "document-uploaded-bridge";
-
-        // cfg.ReceiveEndpoint(documentUploadedQueue, e =>
-        // {
-        //     // Only the bridge endpoint understands the raw publisher contract.
-        //     // The saga continues to consume the internal typed event contract.
-        //     e.UseRawJsonDeserializer(RawSerializerOptions.AnyMessageType, isDefault: true);
-        //     e.Bind(documentUploadedExchange);
-        //     e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
-        // });
-
       cfg.SubscriptionEndpoint(
             "claims-document-bridge",
             "document-uploaded-raw",
@@ -207,9 +193,6 @@ builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddSingleton<IClaimsMetrics, ClaimsMetrics>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
-var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    ?? builder.Configuration["Observability:Otlp:Endpoint"];
-
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProvider =>
     {
@@ -228,22 +211,13 @@ builder.Services.AddOpenTelemetry()
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService(TelemetryConstants.ServiceName));
-
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-        {
-            tracerProvider.AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(otlpEndpoint);
-            });
-        }
     })
     .WithMetrics(metrics =>
     {
         metrics
             .AddMeter(TelemetryConstants.MeterName)
             .AddAspNetCoreInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddPrometheusExporter();
+            .AddRuntimeInstrumentation();
     });
 
 var app = builder.Build();
@@ -265,8 +239,6 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
 });
 
 app.MapControllers();
-
-app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
 

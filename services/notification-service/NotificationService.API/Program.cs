@@ -28,9 +28,18 @@ var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
 
 if (!string.IsNullOrEmpty(keyVaultEndpoint))
 {
-    builder.Configuration.AddAzureKeyVault(
-        new Uri(keyVaultEndpoint),
-        new azureidentity::Azure.Identity.DefaultAzureCredential());
+    try
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultEndpoint),
+            new azureidentity::Azure.Identity.DefaultAzureCredential());
+
+        builder.Configuration.AddEnvironmentVariables();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Key Vault is unavailable. Continuing with local configuration sources. Reason: {ex.Message}");
+    }
 }
 
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
@@ -38,9 +47,6 @@ Directory.CreateDirectory(logDirectory);
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
-    var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
-    var seqUrl = context.Configuration["Observability:Seq:Url"];
-
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
         .MinimumLevel.Information()
@@ -123,13 +129,11 @@ builder.Services.AddSingleton<INotificationMetrics, NotificationMetrics>();
 
 builder.Services.AddHostedService<NotificationDispatcher>();
 
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
-var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    ?? builder.Configuration["Observability:Otlp:Endpoint"];
-
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProvider =>
     {
@@ -148,22 +152,13 @@ builder.Services.AddOpenTelemetry()
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService(TelemetryConstants.ServiceName));
-
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-        {
-            tracerProvider.AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(otlpEndpoint);
-            });
-        }
     })
     .WithMetrics(metrics =>
     {
         metrics
             .AddMeter(TelemetryConstants.MeterName)
             .AddAspNetCoreInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddPrometheusExporter();
+            .AddRuntimeInstrumentation();
      });
 
 var app = builder.Build();
@@ -181,7 +176,7 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-app.MapPrometheusScrapingEndpoint("/metrics");
+app.MapControllers();
 
 app.Run();
 

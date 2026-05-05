@@ -58,7 +58,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "48886d11-17a1-48ae-8046-2c57cc579123",
+  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
   "documentType": "ID_Proof",
   "fileName": "id-proof.pdf"
 }
@@ -79,7 +79,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "48886d11-17a1-48ae-8046-2c57cc579123",
+  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
   "documentType": "Accident_Photos",
   "fileName": "accident-photos.pdf"
 }
@@ -100,7 +100,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "claimId": "48886d11-17a1-48ae-8046-2c57cc579123",
+  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
   "documentType": "Police_Report",
   "fileName": "police-report.pdf"
 }

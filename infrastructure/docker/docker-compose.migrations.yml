@@ -10,9 +10,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=claimsdb;Username=postgres;Password=postgres
-      RabbitMq__Host: rabbitmq
-      RabbitMq__Username: claimsuser
-      RabbitMq__Password: claimspassword
     command: >-
       /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
       && export PATH=$$PATH:/root/.dotnet/tools
@@ -36,9 +33,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=notificationdb;Username=postgres;Password=postgres
-      RabbitMq__Host: rabbitmq
-      RabbitMq__Username: claimsuser
-      RabbitMq__Password: claimspassword
     command: >-
       /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
       && export PATH=$$PATH:/root/.dotnet/tools
@@ -62,9 +56,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=documentdb;Username=postgres;Password=postgres
-      RabbitMq__Host: rabbitmq
-      RabbitMq__Username: claimsuser
-      RabbitMq__Password: claimspassword
     command: >-
       /bin/sh -c "dotnet tool install --global dotnet-ef --version 10.*
       && export PATH=$$PATH:/root/.dotnet/tools
