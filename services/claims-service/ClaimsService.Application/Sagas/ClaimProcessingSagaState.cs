@@ -29,4 +29,9 @@ public class ClaimProcessingSagaState :
     public string? FraudReason { get; set; }
 
     public DateTime? FraudEvaluatedAt { get; set; }
+
+    // Payment result
+    public DateTime? PaymentProcessedAt { get; set; }
+
+    public string? PaymentTransactionId { get; set; }
 }

@@ -1,3 +1,5 @@
+extern alias azureidentity;
+
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Commands.CreateNotification;
 using MassTransit;
@@ -21,6 +23,15 @@ using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
+
+if (!string.IsNullOrEmpty(keyVaultEndpoint))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultEndpoint),
+        new azureidentity::Azure.Identity.DefaultAzureCredential());
+}
 
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
 Directory.CreateDirectory(logDirectory);
@@ -93,7 +104,6 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint(notificationServiceQueue, e =>
         {
-            e.ConfigureConsumeTopology = false;
             e.ConfigureConsumer<RequestDocumentsConsumer>(context);
         });
 

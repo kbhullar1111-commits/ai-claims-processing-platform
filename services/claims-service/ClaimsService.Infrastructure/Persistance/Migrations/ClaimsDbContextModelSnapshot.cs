@@ -53,6 +53,12 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     b.Property<bool?>("IsFraudulent")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("PaymentProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentTransactionId")
+                        .HasColumnType("text");
+
                     b.Property<string>("RequiredDocuments")
                         .IsRequired()
                         .HasColumnType("text");

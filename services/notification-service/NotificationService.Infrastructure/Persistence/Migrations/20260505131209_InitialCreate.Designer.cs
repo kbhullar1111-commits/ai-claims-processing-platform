@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NotificationService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(NotificationDbContext))]
-    [Migration("20260311132901_InitialCreate")]
+    [Migration("20260505131209_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

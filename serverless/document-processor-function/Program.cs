@@ -1,3 +1,5 @@
+extern alias azureidentity;
+
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
@@ -11,9 +13,18 @@ using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
+var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
+
+if (!string.IsNullOrEmpty(keyVaultEndpoint))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultEndpoint),
+        new azureidentity::Azure.Identity.DefaultAzureCredential());
+}
+
 builder.ConfigureFunctionsWebApplication();
 
-builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+builder.Services.AddSerilog((services, loggerConfiguration) =>
 {
     loggerConfiguration
         .MinimumLevel.Information()
@@ -37,7 +48,7 @@ builder.Services
 builder.Services.AddSingleton(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var cs = config["ServiceBusConnection"];
+    var cs = config.GetConnectionString("ServiceBus");
 
     return new ServiceBusClient(cs);
 });

@@ -4,14 +4,53 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace DocumentService.Infrastructure.Persistence.Migrations
+namespace ClaimsService.Infrastructure.Persistance.Migrations
 {
     /// <inheritdoc />
-    public partial class AddOutbox : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "ClaimProcessingSagaState",
+                columns: table => new
+                {
+                    CorrelationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CurrentState = table.Column<string>(type: "text", nullable: false),
+                    ClaimId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClaimAmount = table.Column<decimal>(type: "numeric", nullable: false),
+                    RequiredDocuments = table.Column<string>(type: "text", nullable: false),
+                    UploadedDocuments = table.Column<string>(type: "text", nullable: false),
+                    FraudRiskScore = table.Column<decimal>(type: "numeric", nullable: true),
+                    IsFraudulent = table.Column<bool>(type: "boolean", nullable: true),
+                    FraudReason = table.Column<string>(type: "text", nullable: true),
+                    FraudEvaluatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    PaymentProcessedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    PaymentTransactionId = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClaimProcessingSagaState", x => x.CorrelationId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "claims",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PolicyId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClaimAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    Status = table.Column<int>(type: "integer", maxLength: 50, nullable: false),
+                    SubmittedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_claims", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "InboxState",
                 columns: table => new
@@ -119,6 +158,12 @@ namespace DocumentService.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ClaimProcessingSagaState");
+
+            migrationBuilder.DropTable(
+                name: "claims");
+
             migrationBuilder.DropTable(
                 name: "InboxState");
 

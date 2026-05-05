@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DocumentService.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDocumentTable : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -26,6 +26,21 @@ namespace DocumentService.Infrastructure.Persistence.Migrations
                     table.PrimaryKey("PK_Documents", x => x.Id);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "OutboxMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    Payload = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Processed = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OutboxMessages", x => x.Id);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Documents_ClaimId_DocumentType",
                 table: "Documents",
@@ -37,6 +52,9 @@ namespace DocumentService.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Documents");
+
+            migrationBuilder.DropTable(
+                name: "OutboxMessages");
         }
     }
 }

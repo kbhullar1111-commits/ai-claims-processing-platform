@@ -204,26 +204,40 @@ public class ClaimProcessingSagaStateMachine :
             Ignore(DocumentUploaded),
             Ignore(FraudCheckCompleted),
             When(PaymentProcessed)
-                .IfElse(context => !context.Message.Success,
-                    thenBinder => thenBinder
+                .IfElse(context => context.Saga.PaymentProcessedAt.HasValue,
+                    duplicate => duplicate
                         .Then(context => _logger.LogWarning(
-                            "Claim rejected due to payment failure. SagaId={SagaId}, ClaimId={ClaimId}",
+                            "Duplicate PaymentProcessed ignored. SagaId={SagaId}, ClaimId={ClaimId}, ProcessedAt={ProcessedAt}",
                             context.Saga.CorrelationId,
-                            context.Saga.ClaimId))
-                        .Send(_claimsServiceQueueUri,
-                                    ctx => new MarkClaimRejected(
-                                        ctx.Saga.ClaimId,
-                                        "Payment processing failed"))
-                        //.TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
-                        .Finalize(),
-                    elseBinder => elseBinder
-                        .Then(context => _logger.LogInformation(
-                            "Claim approved, payment processed successfully. SagaId={SagaId}, ClaimId={ClaimId}",
-                            context.Saga.CorrelationId,
-                            context.Saga.ClaimId))
-                        .Send(_claimsServiceQueueUri,
-                                    ctx => new MarkClaimApproved(ctx.Saga.ClaimId))
-                        .Finalize()
+                            context.Saga.ClaimId,
+                            context.Saga.PaymentProcessedAt)),
+                    fresh => fresh
+                        .Then(context =>
+                        {
+                            context.Saga.PaymentProcessedAt = context.Message.ProcessedAt;
+                            context.Saga.PaymentTransactionId = context.Message.TransactionId;
+                        })
+                        .IfElse(context => !context.Message.Success,
+                            thenBinder => thenBinder
+                                .Then(context => _logger.LogWarning(
+                                    "Claim rejected due to payment failure. SagaId={SagaId}, ClaimId={ClaimId}",
+                                    context.Saga.CorrelationId,
+                                    context.Saga.ClaimId))
+                                .Send(_claimsServiceQueueUri,
+                                            ctx => new MarkClaimRejected(
+                                                ctx.Saga.ClaimId,
+                                                "Payment processing failed"))
+                                //.TransitionTo(Rejected) // In a real system, you might want a separate "PaymentFailed" state to allow for retries
+                                .Finalize(),
+                            elseBinder => elseBinder
+                                .Then(context => _logger.LogInformation(
+                                    "Claim approved, payment processed successfully. SagaId={SagaId}, ClaimId={ClaimId}",
+                                    context.Saga.CorrelationId,
+                                    context.Saga.ClaimId))
+                                .Send(_claimsServiceQueueUri,
+                                            ctx => new MarkClaimApproved(ctx.Saga.ClaimId))
+                                .Finalize()
+                        )
                 )
         );
 

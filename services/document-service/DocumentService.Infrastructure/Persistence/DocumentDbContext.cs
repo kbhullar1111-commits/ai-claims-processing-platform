@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using DocumentService.Domain.Entities;
 
+namespace DocumentService.Infrastructure.Persistence;
+
 public class DocumentDbContext : DbContext
 {
     public DocumentDbContext(DbContextOptions<DocumentDbContext> options)

@@ -1,3 +1,5 @@
+extern alias azureidentity;
+
 using ClaimsService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ClaimsService.Application.Interfaces;
@@ -28,6 +30,37 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
+
+if (!string.IsNullOrEmpty(keyVaultEndpoint))
+{
+        try
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultEndpoint),
+            new azureidentity::Azure.Identity.DefaultAzureCredential());
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Key Vault is unavailable. Continuing with local configuration sources. Reason: {ex.Message}");
+    }
+}
+
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
+
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
+}
+
+if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Service Bus connection string. Ensure Key Vault secret 'ConnectionStrings--ServiceBus' exists.");
+}
+
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     var seqEnabled = context.Configuration.GetValue<bool>("Observability:Seq:Enabled");
@@ -52,7 +85,10 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = appInsightsConnectionString;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -102,7 +138,7 @@ builder.Services.AddMassTransit(x =>
     x.AddSagaStateMachine<ClaimProcessingSagaStateMachine, ClaimProcessingSagaState>()
         .EntityFrameworkRepository(r =>
         {
-            r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+            r.ConcurrencyMode = ConcurrencyMode.Optimistic;
             r.UsePostgres();
 
             r.AddDbContext<DbContext, ClaimsDbContext>((provider, options) =>
@@ -115,8 +151,7 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingAzureServiceBus((context, cfg) =>
     {
-        var connectionString =
-            builder.Configuration.GetConnectionString("ServiceBus");
+        var connectionString = serviceBusConnectionString;
 
         cfg.Host(connectionString);
 
@@ -126,22 +161,15 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint(claimsServiceQueue, e =>
         {
-            e.ConfigureConsumeTopology = false;
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
 
         cfg.UseMessageRetry(r =>
         {
-            r.Handle<PostgresException>(x => x.SqlState == "40001");
-            r.Interval(3, TimeSpan.FromSeconds(1));
+            r.Handle<DbUpdateConcurrencyException>();
+            r.Handle<Npgsql.PostgresException>(x => x.SqlState == "40001"); // serialization/tx conflicts
+            r.Interval(5, TimeSpan.FromMilliseconds(500));
         });
-
-        cfg.Publish<MarkClaimApproved>(x => x.Exclude = true);
-        cfg.Publish<MarkClaimRejected>(x => x.Exclude = true);
-        cfg.Publish<MarkClaimUnderReview>(x => x.Exclude = true);
-        cfg.Publish<RequestDocuments>(x => x.Exclude = true);
-        cfg.Publish<RunFraudCheck>(x => x.Exclude = true);
-        cfg.Publish<ProcessPayment>(x => x.Exclude = true);
 
         // DO NOT add RabbitMQ raw bridge endpoint here yet
         // var documentUploadedExchange = builder.Configuration["Messaging:DocumentUploaded:ExchangeName"] ?? "document-uploaded";
@@ -161,7 +189,6 @@ builder.Services.AddMassTransit(x =>
             "document-uploaded-raw",
             e =>
             {
-                e.ConfigureConsumeTopology = false;
 
                 e.UseRawJsonDeserializer(
                     RawSerializerOptions.AnyMessageType,

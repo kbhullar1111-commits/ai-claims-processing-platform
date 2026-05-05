@@ -1,3 +1,5 @@
+extern alias azureidentity;
+
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -9,6 +11,15 @@ using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
+
+if (!string.IsNullOrEmpty(keyVaultEndpoint))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultEndpoint),
+        new azureidentity::Azure.Identity.DefaultAzureCredential());
+}
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
@@ -52,7 +63,6 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint(paymentServiceQueue, e =>
         {
-            e.ConfigureConsumeTopology = false;
             e.UseInMemoryOutbox(context);
             e.ConfigureConsumer<ProcessPaymentConsumer>(context);
         });

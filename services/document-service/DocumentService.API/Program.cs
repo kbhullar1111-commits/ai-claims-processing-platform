@@ -1,5 +1,8 @@
+extern alias azureidentity;
+
 using DocumentService.Application.Interfaces;
 using DocumentService.Application.Commands;
+using DocumentService.Infrastructure.Persistence;
 using DocumentService.Infrastructure.Storage;
 using DocumentService.Infrastructure.Messaging;
 using MediatR;
@@ -19,6 +22,16 @@ using System.Reflection;
 using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];
+
+if (!string.IsNullOrEmpty(keyVaultEndpoint))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultEndpoint),
+        new azureidentity::Azure.Identity.DefaultAzureCredential());
+}
+
 var blobStorageConnectionString = builder.Configuration.GetConnectionString("BlobStorage");
 var useAzureBlobStorage = !string.IsNullOrWhiteSpace(blobStorageConnectionString);
 
