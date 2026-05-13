@@ -65,7 +65,10 @@ builder.Services.AddMassTransit(x =>
     {
         var connectionString =
             builder.Configuration.GetConnectionString("ServiceBus");
-        cfg.Host(connectionString);
+        cfg.Host(connectionString, h =>
+        {
+            h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
+        });
 
         cfg.ReceiveEndpoint(fraudServiceQueue, e =>
         {

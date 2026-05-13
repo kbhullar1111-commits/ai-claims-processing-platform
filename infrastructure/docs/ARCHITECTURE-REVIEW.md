@@ -21,6 +21,72 @@ The workspace is organized into service boundaries plus shared contracts:
 
 Core services follow API/Application/Domain/Infrastructure layering.
 
+## Cloud Infrastructure (Azure)
+
+### Current Azure Resources
+
+**Compute & Container Registry**
+- Azure Container Registry (ACR): Available for image storage (not yet actively used for CI/CD)
+- Azure Container Apps Environment
+  - Workload Profile: Consumption (scale-to-zero capable)
+  - Region: Central India
+
+**Data & Storage**
+- Azure PostgreSQL Flexible Server
+  - Name: `pg-ai-claims-dev`
+  - Version: PostgreSQL 16
+  - Tier: Burstable (B1ms)
+  - SSL/TLS: Required (enforced)
+  - Databases: `claimsdb`, `notificationdb`, `documentdb`
+
+- Azure Blob Storage
+  - Account: `staiclaimsdev01`
+  - Used for document uploads and serverless function triggers
+
+**Messaging & Integration**
+- Azure Service Bus
+  - Namespace: `sb-aiclaims-dev-kamal01`
+  - Primary transport for async messaging between services
+
+**Secrets & Configuration**
+- Azure Key Vault
+  - Name: `kv-aiclaims-dev`
+  - Status: Configured but not fully integrated (local development uses direct config)
+
+**Observability**
+- Application Insights
+  - Instrumentation Key: `1e5a9a7d-fc4f-41eb-a2ae-4d79562a6983`
+  - Region: Central India
+
+## Deployment Model
+
+### Current Deployment Strategy
+
+**Local Development**
+- Docker Compose orchestrates all services locally
+- PostgreSQL, RabbitMQ/Service Bus connectivity configured in docker-compose.yml
+- Services connect to Azure PostgreSQL and Service Bus directly (hybrid model)
+
+**Cloud Deployment**
+- Partial: Services are containerized with multi-stage Dockerfiles
+- Ready for Azure Container Apps deployment
+- ACR integration available but CI/CD pipeline not yet implemented
+
+### Containerization Approach
+
+- Multi-stage Dockerfiles optimize image size
+- Images built locally and pushed to ACR (manual process)
+- Azure Container Apps pull images on-demand
+- Health probes configured for startup, liveness, and readiness
+
+### Planned Evolution
+
+- GitHub Actions CI/CD pipeline for automated builds/deploys
+- Container image scanning and vulnerability assessment
+- Infrastructure-as-Code (Bicep/ARM templates or Terraform)
+- AKS migration path for advanced orchestration scenarios
+- Managed Identity authentication for service-to-service calls
+
 ## Runtime and Integration Summary
 
 ### Messaging
@@ -80,6 +146,82 @@ Core services follow API/Application/Domain/Infrastructure layering.
 - Observability overlay adds Seq, Jaeger, Prometheus, and Grafana plus OTLP/Seq env overrides.
 - Migrations compose exists for containerized migration runs.
 - Primary local migration helper script (`commands/migrate.cmd`) runs `dotnet ef` against local postgres.
+
+## Security Posture
+
+### Current State
+
+**Data in Transit**
+- PostgreSQL: SSL/TLS enforced on Azure Flexible Server
+- Service Bus: Encrypted by default (HTTPS)
+- Service-to-service: HTTP (local) and HTTPS (Azure Container Apps)
+
+**Secrets Management**
+- Development: Secrets stored in `appsettings.Development.json` (local file, not committed)
+- Production-ready path: Azure Key Vault (configured but not yet enforced)
+- Connection strings and API keys currently in configuration; no environment-based secret rotation
+
+**Network Access**
+- Azure PostgreSQL: Firewall rules restrict direct access
+- Service Bus: Shared access keys used for authentication
+- Container Apps: Public endpoints (no private networking yet)
+
+### Planned Security Enhancements
+
+- Azure Key Vault integration with automatic rotation
+- Managed Identities for service-to-service authentication (eliminate connection string secrets)
+- Private VNet integration for Azure resources
+- Network Security Groups (NSGs) and private endpoints
+- Secret scanning in CI/CD pipeline
+- API rate limiting and DDoS protection
+
+## Reliability Patterns
+
+### Currently Implemented
+
+- **Saga Orchestration**: Claim processing coordinated across document, fraud, and payment services
+- **Transactional Outbox**: MassTransit outbox ensures events are published atomically with state changes
+- **Inbox Deduplication**: Prevents duplicate processing of repeated messages
+- **Health & Readiness Probes**: All services expose `/health`, `/live`, and `/ready` endpoints
+  - Claims/Notification/Document services include database connectivity checks
+  - Fraud/Payment use self-check readiness
+- **Retry Handling**: MassTransit configured for automatic exponential backoff
+- **Idempotent Processing**: Notification consumer processes events idempotently
+- **Row-Level Locking**: Notification background dispatcher uses `FOR UPDATE SKIP LOCKED` to prevent duplicate sends
+
+### Future Reliability Goals
+
+- Dead-letter queue (DLQ) strategy for failed messages
+- Circuit breaker patterns for external service calls
+- Distributed caching layer (Redis) for performance and resilience
+- Multi-region failover and geo-redundancy
+- Chaos engineering and chaos testing
+- Enhanced monitoring of saga state transitions
+
+## Cost Optimization Strategy
+
+### Current Cost-Control Practices
+
+**Infrastructure**
+- Azure Container Apps: Consumption plan (pay per execution)
+- PostgreSQL: Burstable tier (B1ms) for non-production learning phase
+- Service Bus: Shared namespace across all services
+- Blob Storage: Standard tier with lifecycle policies possible
+
+**Operational**
+- Manual stop/start of PostgreSQL server when not in use
+- Shared database server across services during learning phase
+- No scheduled auto-shutdown for Container Apps (running 24/7)
+
+### Planned Cost Optimization
+
+- Automated non-production environment shutdown (evenings/weekends)
+- Infrastructure automation scripts for resource tear-down
+- Ephemeral review environments for feature branches (short-lived)
+- Azure Reservations for predictable workloads
+- Container image layer caching to reduce build times and ACR storage
+- PostgreSQL connection pooling to reduce database connections
+- Application Insights sampling rules to reduce data ingestion costs
 
 ## Strengths
 

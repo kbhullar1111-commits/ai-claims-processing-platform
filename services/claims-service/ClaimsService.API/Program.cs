@@ -152,7 +152,10 @@ builder.Services.AddMassTransit(x =>
     {
         var connectionString = serviceBusConnectionString;
 
-        cfg.Host(connectionString);
+        cfg.Host(connectionString, h =>
+        {
+            h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
+        });
 
         var claimsServiceQueue =
             builder.Configuration["Messaging:Queues:ClaimsServiceQueue"]
@@ -222,11 +225,11 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
+// if (app.Environment.IsDevelopment())
+// {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+// }
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions

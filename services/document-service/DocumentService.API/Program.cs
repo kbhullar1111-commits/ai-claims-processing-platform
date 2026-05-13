@@ -2,14 +2,14 @@ extern alias azureidentity;
 
 using DocumentService.Application.Interfaces;
 using DocumentService.Application.Commands;
-using DocumentService.Infrastructure.Persistence;
+// using DocumentService.Infrastructure.Persistence; // Not used - no database operations
 using DocumentService.Infrastructure.Storage;
 using Serilog;
 using Serilog.Events;
 using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.EntityFrameworkCore;
+// using Microsoft.EntityFrameworkCore; // Not used - no database operations
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -54,8 +54,9 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 
 builder.Services.AddApplicationInsightsTelemetry();
 
-builder.Services.AddDbContext<DocumentDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+// Commented out: Document service doesn't perform database operations
+// builder.Services.AddDbContext<DocumentDbContext>(options =>
+//     options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -68,8 +69,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddHealthChecks()
-    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
-    .AddCheck<DocumentDatabaseHealthCheck>("postgres", tags: ["ready"]);
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"]);
+    // .AddCheck<DocumentDatabaseHealthCheck>("postgres", tags: ["ready"]); // Commented out - no database operations
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -107,7 +108,7 @@ builder.Services.AddOpenTelemetry()
                     !httpContext.Request.Path.StartsWithSegments("/ready");
             })
             .AddHttpClientInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation()
+            // .AddEntityFrameworkCoreInstrumentation() // Commented out - no database operations
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService("DocumentService"));
@@ -115,11 +116,11 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
+// if (app.Environment.IsDevelopment())
+// {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+// }
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
@@ -140,23 +141,24 @@ app.MapControllers();
 
 app.Run();
 
-internal sealed class DocumentDatabaseHealthCheck(DocumentDbContext dbContext) : IHealthCheck
-{
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
-            return canConnect
-                ? HealthCheckResult.Healthy("Postgres is reachable.")
-                : HealthCheckResult.Unhealthy("Postgres is not reachable.");
-        }
-        catch (Exception ex)
-        {
-            return HealthCheckResult.Unhealthy("Postgres health check failed.", ex);
-        }
-    }
-}
+// Commented out: Document service doesn't perform database operations
+// internal sealed class DocumentDatabaseHealthCheck(DocumentDbContext dbContext) : IHealthCheck
+// {
+//     public async Task<HealthCheckResult> CheckHealthAsync(
+//         HealthCheckContext context,
+//         CancellationToken cancellationToken = default)
+//     {
+//         try
+//         {
+//             var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+//             return canConnect
+//                 ? HealthCheckResult.Healthy("Postgres is reachable.")
+//                 : HealthCheckResult.Unhealthy("Postgres is not reachable.");
+//         }
+//         catch (Exception ex)
+//         {
+//             return HealthCheckResult.Unhealthy("Postgres health check failed.", ex);
+//         }
+//     }
+// }
 
