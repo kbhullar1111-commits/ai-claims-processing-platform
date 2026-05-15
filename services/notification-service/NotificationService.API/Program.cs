@@ -42,6 +42,21 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
+
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
+}
+
+if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Service Bus connection string. Ensure Key Vault secret 'ConnectionStrings--ServiceBus' exists.");
+}
+
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
 Directory.CreateDirectory(logDirectory);
 
@@ -70,10 +85,13 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
             TelemetryConverter.Traces);
 });
 
-builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = appInsightsConnectionString;
+});
 
-var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
-    ?? throw new InvalidOperationException("Connection string 'Postgres' is required.");
+var postgresConnectionString = builder.Configuration.GetConnectionString("NotificationPostgres")
+    ?? throw new InvalidOperationException("Connection string 'NotificationPostgres' is required.");
 
 var npgsqlDataSourceBuilder = new NpgsqlDataSourceBuilder(postgresConnectionString);
 npgsqlDataSourceBuilder.EnableDynamicJson();
@@ -96,23 +114,22 @@ var notificationServiceQueue = builder.Configuration["Messaging:Queues:Notificat
 
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<ClaimSubmittedConsumer>();
+    x.AddConsumer<ClaimSubmittedConsumer>()
+        .ExcludeFromConfigureEndpoints();
 
     x.AddConsumer<RequestDocumentsConsumer>()
         .ExcludeFromConfigureEndpoints();
 
     x.UsingAzureServiceBus((context, cfg) =>
     {
-        var connectionString =
-            builder.Configuration.GetConnectionString("ServiceBus");
-
-        cfg.Host(connectionString, h =>
+        cfg.Host(serviceBusConnectionString, h =>
         {
             h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
         });
 
         cfg.ReceiveEndpoint(notificationServiceQueue, e =>
         {
+            e.ConfigureConsumer<ClaimSubmittedConsumer>(context);
             e.ConfigureConsumer<RequestDocumentsConsumer>(context);
         });
 
@@ -166,6 +183,8 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+await EnsureDatabaseIsReachableAsync(app.Services);
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -182,6 +201,20 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
 app.MapControllers();
 
 app.Run();
+
+static async Task EnsureDatabaseIsReachableAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+    var canConnect = await dbContext.Database.CanConnectAsync(cts.Token);
+    if (!canConnect)
+    {
+        throw new InvalidOperationException(
+            "Startup validation failed: Postgres is unreachable. Stopping service to avoid endless retry logging.");
+    }
+}
 
 internal sealed class NotificationDatabaseHealthCheck(NotificationDbContext dbContext) : IHealthCheck
 {

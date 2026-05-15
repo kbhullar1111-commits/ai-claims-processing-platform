@@ -50,6 +50,7 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
 
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
+var claimsPostgresConnectionString = builder.Configuration.GetConnectionString("ClaimsPostgres");
 
 if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
@@ -61,6 +62,12 @@ if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
 {
     throw new InvalidOperationException(
         "Missing Service Bus connection string. Ensure Key Vault secret 'ConnectionStrings--ServiceBus' exists.");
+}
+
+if (string.IsNullOrWhiteSpace(claimsPostgresConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Claims Postgres connection string. Ensure Key Vault secret 'ConnectionStrings--ClaimsPostgres' exists.");
 }
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
@@ -99,7 +106,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddDbContext<ClaimsDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("Postgres"),
+    claimsPostgresConnectionString,
         b => b.MigrationsAssembly("ClaimsService.Infrastructure")
 ));
 
@@ -142,9 +149,7 @@ builder.Services.AddMassTransit(x =>
 
             r.AddDbContext<DbContext, ClaimsDbContext>((provider, options) =>
             {
-                options.UseNpgsql(
-                    provider.GetRequiredService<IConfiguration>()
-                        .GetConnectionString("Postgres"));
+                options.UseNpgsql(claimsPostgresConnectionString);
             });
         });
 
@@ -225,6 +230,8 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+await EnsureDatabaseIsReachableAsync(app.Services);
+
 // if (app.Environment.IsDevelopment())
 // {
     app.UseSwagger();
@@ -244,6 +251,20 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
 app.MapControllers();
 
 app.Run();
+
+static async Task EnsureDatabaseIsReachableAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ClaimsDbContext>();
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+    var canConnect = await dbContext.Database.CanConnectAsync(cts.Token);
+    if (!canConnect)
+    {
+        throw new InvalidOperationException(
+            "Startup validation failed: Postgres is unreachable. Stopping service to avoid endless retry logging.");
+    }
+}
 
 internal sealed class ClaimsDatabaseHealthCheck(ClaimsDbContext dbContext) : IHealthCheck
 {

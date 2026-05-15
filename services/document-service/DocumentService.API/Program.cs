@@ -35,6 +35,14 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
+}
+
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     loggerConfiguration
@@ -52,7 +60,11 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
             TelemetryConverter.Traces);
 });
 
-builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = appInsightsConnectionString;
+});
+builder.Services.AddProblemDetails();
 
 // Commented out: Document service doesn't perform database operations
 // builder.Services.AddDbContext<DocumentDbContext>(options =>
@@ -85,12 +97,24 @@ builder.Services.AddScoped<IObjectStorage>(sp =>
     var connectionString =
         config.GetConnectionString("BlobStorage");
 
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "Missing blob storage connection string. Ensure Key Vault secret 'ConnectionStrings--BlobStorage' exists.");
+    }
+
     var containerName =
-        config["Storage:ContainerName"];
+        config["Storage:ContainerName"] ?? "claim-documents";
+
+    if (string.IsNullOrWhiteSpace(containerName))
+    {
+        throw new InvalidOperationException(
+            "Missing blob container name. Set 'Storage:ContainerName' (or Key Vault secret 'Storage--ContainerName').");
+    }
 
     return new AzureBlobObjectStorage(
-        connectionString!,
-        containerName!);
+        connectionString,
+        containerName);
 });
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
@@ -115,6 +139,8 @@ builder.Services.AddOpenTelemetry()
     });
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // if (app.Environment.IsDevelopment())
 // {

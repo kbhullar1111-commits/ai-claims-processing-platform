@@ -7,9 +7,9 @@ public class NotificationDbContextFactory : IDesignTimeDbContextFactory<Notifica
 {
     public NotificationDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__NotificationPostgres")
             ?? throw new InvalidOperationException(
-                "Set the 'ConnectionStrings__Postgres' environment variable before running EF migrations.");
+                "Set the 'ConnectionStrings__NotificationPostgres' environment variable before running EF migrations.");
 
         var optionsBuilder = new DbContextOptionsBuilder<NotificationDbContext>();
         optionsBuilder.UseNpgsql(connectionString,

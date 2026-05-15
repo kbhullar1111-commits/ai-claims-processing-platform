@@ -30,6 +30,21 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
+
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
+}
+
+if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Service Bus connection string. Ensure Key Vault secret 'ConnectionStrings--ServiceBus' exists.");
+}
+
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
     loggerConfiguration
@@ -49,7 +64,10 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
             TelemetryConverter.Traces);
 });
 
-builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = appInsightsConnectionString;
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
@@ -63,9 +81,7 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingAzureServiceBus((context, cfg) =>
     {
-        var connectionString =
-            builder.Configuration.GetConnectionString("ServiceBus");
-        cfg.Host(connectionString, h =>
+        cfg.Host(serviceBusConnectionString, h =>
         {
             h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
         });
