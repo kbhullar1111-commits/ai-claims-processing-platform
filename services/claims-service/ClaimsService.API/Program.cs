@@ -128,6 +128,13 @@ builder.Services.AddMassTransit(x =>
 {
     x.SetKebabCaseEndpointNameFormatter();
 
+    // Prevent runtime creation of Fault<T> topics/subscriptions when consumers throw.
+    // We rely on the _error queue and logs for operational visibility.
+    x.AddConfigureEndpointsCallback((name, cfg) =>
+    {
+        cfg.PublishFaults = false;
+    });
+
     x.AddConsumer<ClaimStatusConsumer>()
         .ExcludeFromConfigureEndpoints();
 
@@ -166,8 +173,34 @@ builder.Services.AddMassTransit(x =>
             builder.Configuration["Messaging:Queues:ClaimsServiceQueue"]
             ?? "claims-service";
 
+        var paymentProcessedTopic =
+            builder.Configuration["Messaging:Topics:PaymentProcessedTopic"]
+            ?? "payment-processed";
+
+        var claimSubmittedTopic =
+            builder.Configuration["Messaging:Topics:ClaimSubmittedTopic"]
+            ?? "claim-submitted";
+
+        var documentUploadedTopic =
+            builder.Configuration["Messaging:Topics:DocumentUploadedTopic"]
+            ?? "document-uploaded";
+
+        var fraudCheckCompletedTopic =
+            builder.Configuration["Messaging:Topics:FraudCheckCompletedTopic"]
+            ?? "fraud-check-completed";
+
+        var sagaIngressQueue =
+            builder.Configuration["Messaging:Subscriptions:SagaIngressQueue"]
+            ?? "claim-processing-saga-state";
+
+        cfg.Message<ClaimSubmitted>(m => m.SetEntityName(claimSubmittedTopic));
+        cfg.Message<DocumentUploaded>(m => m.SetEntityName(documentUploadedTopic));
+        cfg.Message<FraudCheckCompleted>(m => m.SetEntityName(fraudCheckCompletedTopic));
+        cfg.Message<PaymentProcessed>(m => m.SetEntityName(paymentProcessedTopic));
+
         cfg.ReceiveEndpoint(claimsServiceQueue, e =>
         {
+            e.ConfigureConsumeTopology = false;
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
 
@@ -191,9 +224,19 @@ builder.Services.AddMassTransit(x =>
                 e.ConfigureConsumer<DocumentUploadedBridgeConsumer>(context);
             });
 
-                cfg.ConfigureEndpoints(context);
-            });
+        cfg.ReceiveEndpoint(sagaIngressQueue, e =>
+        {
+            e.ConfigureConsumeTopology = false;
+
+            e.Subscribe<ClaimSubmitted>(claimSubmittedTopic);
+            e.Subscribe<DocumentUploaded>(documentUploadedTopic);
+            e.Subscribe<FraudCheckCompleted>(fraudCheckCompletedTopic);
+            e.Subscribe<PaymentProcessed>(paymentProcessedTopic);
+
+            e.ConfigureSaga<ClaimProcessingSagaState>(context);
         });
+    });
+});
 
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();

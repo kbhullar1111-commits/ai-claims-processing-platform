@@ -4,6 +4,8 @@ WORKDIR /src
 
 # Copy project files first so dependency restore can be cached separately.
 COPY ["services/payment-service/PaymentService.API/PaymentService.API.csproj", "services/payment-service/PaymentService.API/"]
+COPY ["services/payment-service/PaymentService.Application/PaymentService.Application.csproj", "services/payment-service/PaymentService.Application/"]
+COPY ["services/payment-service/PaymentService.Infrastructure/PaymentService.Infrastructure.csproj", "services/payment-service/PaymentService.Infrastructure/"]
 COPY ["building-blocks/contracts/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj", "building-blocks/contracts/BuildingBlocks.Contracts/"]
 
 # Download NuGet packages and resolve project-to-project dependencies.

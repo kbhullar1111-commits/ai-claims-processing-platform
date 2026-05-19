@@ -82,6 +82,7 @@ public class ClaimProcessingSagaStateMachine :
         Event(() => PaymentProcessed, x =>
         {
             x.CorrelateById(context => context.Message.ClaimId);
+            x.ConfigureConsumeTopology = false;
         });
 
         Initially(
@@ -183,16 +184,26 @@ public class ClaimProcessingSagaStateMachine :
                                     context.Saga.FraudRiskScore,
                                     context.Saga.FraudReason))
                                 .Send(_claimsServiceQueueUri,
-                                            ctx => new MarkClaimRejected(
-                                                ctx.Saga.ClaimId,
-                                                ctx.Message.Reason))
+                                            ctx =>
+                                            {
+                                                var reason = ctx.Message.Reason;
+                                                if (string.IsNullOrWhiteSpace(reason))
+                                                {
+                                                    reason = "Fraud check failed";
+                                                }
+
+                                                return new MarkClaimRejected(
+                                                    ctx.Saga.ClaimId,
+                                                    reason!);
+                                            })
                                 .Finalize(),
                             elseInnerBinder => elseInnerBinder
                                 .Then(context => _logger.LogInformation(
-                                    "Fraud check passed, initiating payment. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}",
+                                    "Fraud check passed, initiating payment. SagaId={SagaId}, ClaimId={ClaimId}, Amount={Amount}, PaymentQueue={PaymentQueue}",
                                     context.Saga.CorrelationId,
                                     context.Saga.ClaimId,
-                                    context.Saga.ClaimAmount))
+                                    context.Saga.ClaimAmount,
+                                    _paymentServiceQueueUri))
                                 .Send(_paymentServiceQueueUri,
                                     context => new ProcessPayment(context.Saga.ClaimId, context.Saga.ClaimAmount))
                                 .TransitionTo(PaymentProcessing)
@@ -204,13 +215,24 @@ public class ClaimProcessingSagaStateMachine :
             Ignore(DocumentUploaded),
             Ignore(FraudCheckCompleted),
             When(PaymentProcessed)
-                .IfElse(context => context.Saga.PaymentProcessedAt.HasValue,
+                .Then(context => _logger.LogInformation(
+                    "PaymentProcessed received by saga. SagaId={SagaId}, ClaimId={ClaimId}, Success={Success}, TransactionId={TransactionId}, ProcessedAt={ProcessedAt}",
+                    context.Saga.CorrelationId,
+                    context.Message.ClaimId,
+                    context.Message.Success,
+                    context.Message.TransactionId,
+                    context.Message.ProcessedAt))
+                .IfElse(context => context.Saga.PaymentProcessedAt.HasValue
+                                || !string.IsNullOrWhiteSpace(context.Saga.PaymentTransactionId),
                     duplicate => duplicate
                         .Then(context => _logger.LogWarning(
-                            "Duplicate PaymentProcessed ignored. SagaId={SagaId}, ClaimId={ClaimId}, ProcessedAt={ProcessedAt}",
+                            "Duplicate PaymentProcessed ignored. SagaId={SagaId}, ClaimId={ClaimId}, ExistingTransactionId={ExistingTransactionId}, IncomingTransactionId={IncomingTransactionId}, ExistingProcessedAt={ExistingProcessedAt}, IncomingProcessedAt={IncomingProcessedAt}",
                             context.Saga.CorrelationId,
                             context.Saga.ClaimId,
-                            context.Saga.PaymentProcessedAt)),
+                            context.Saga.PaymentTransactionId,
+                            context.Message.TransactionId,
+                            context.Saga.PaymentProcessedAt,
+                            context.Message.ProcessedAt)),
                     fresh => fresh
                         .Then(context =>
                         {

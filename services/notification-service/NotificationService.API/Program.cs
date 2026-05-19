@@ -111,9 +111,17 @@ builder.Services.AddHealthChecks()
     .AddCheck<NotificationDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
 var notificationServiceQueue = builder.Configuration["Messaging:Queues:NotificationServiceQueue"] ?? "notification-service";
+var claimSubmittedTopic = builder.Configuration["Messaging:Topics:ClaimSubmittedTopic"] ?? "claim-submitted";
 
 builder.Services.AddMassTransit(x =>
 {
+    // Prevent runtime creation of Fault<T> topics/subscriptions when consumers throw.
+    // We rely on the _error queue and logs for operational visibility.
+    x.AddConfigureEndpointsCallback((name, cfg) =>
+    {
+        cfg.PublishFaults = false;
+    });
+
     x.AddConsumer<ClaimSubmittedConsumer>()
         .ExcludeFromConfigureEndpoints();
 
@@ -127,8 +135,12 @@ builder.Services.AddMassTransit(x =>
             h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
         });
 
+        cfg.Message<BuildingBlocks.Contracts.Claims.ClaimSubmitted>(m => m.SetEntityName(claimSubmittedTopic));
+
         cfg.ReceiveEndpoint(notificationServiceQueue, e =>
         {
+            e.ConfigureConsumeTopology = false;
+            e.Subscribe<BuildingBlocks.Contracts.Claims.ClaimSubmitted>(claimSubmittedTopic);
             e.ConfigureConsumer<ClaimSubmittedConsumer>(context);
             e.ConfigureConsumer<RequestDocumentsConsumer>(context);
         });

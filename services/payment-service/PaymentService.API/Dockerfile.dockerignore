@@ -1,5 +1,7 @@
 **
 !services/payment-service/PaymentService.API/**
+!services/payment-service/PaymentService.Application/**
+!services/payment-service/PaymentService.Infrastructure/**
 !building-blocks/contracts/BuildingBlocks.Contracts/**
 **/bin/**
 **/obj/**

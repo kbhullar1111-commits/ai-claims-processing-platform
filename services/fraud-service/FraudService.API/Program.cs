@@ -73,9 +73,17 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
 
 var fraudServiceQueue = builder.Configuration["Messaging:Queues:FraudServiceQueue"] ?? "fraud-service";
+var fraudCheckCompletedTopic = builder.Configuration["Messaging:Topics:FraudCheckCompletedTopic"] ?? "fraud-check-completed";
 
 builder.Services.AddMassTransit(x =>
 {
+    // Prevent runtime creation of Fault<T> topics/subscriptions when consumers throw.
+    // We rely on the _error queue and logs for operational visibility.
+    x.AddConfigureEndpointsCallback((name, cfg) =>
+    {
+        cfg.PublishFaults = false;
+    });
+
     x.AddConsumer<RunFraudCheckConsumer>()
         .ExcludeFromConfigureEndpoints();
 
@@ -86,8 +94,11 @@ builder.Services.AddMassTransit(x =>
             h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
         });
 
+        cfg.Message<BuildingBlocks.Contracts.Fraud.FraudCheckCompleted>(m => m.SetEntityName(fraudCheckCompletedTopic));
+
         cfg.ReceiveEndpoint(fraudServiceQueue, e =>
         {
+            e.ConfigureConsumeTopology = false;
             e.UseInMemoryOutbox(context);
             e.ConfigureConsumer<RunFraudCheckConsumer>(context);
         });
