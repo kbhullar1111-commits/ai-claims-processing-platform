@@ -158,11 +158,6 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
-
 app.MapControllers();
 
 app.Run();

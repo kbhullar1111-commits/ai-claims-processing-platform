@@ -12,9 +12,6 @@
     <PackageReference Include="Azure.Identity" Version="1.11.4">
       <Aliases>azureidentity</Aliases>
     </PackageReference>
-    <PackageReference Include="MassTransit" Version="8.2.3" />
-    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.2.3" />
-    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" Version="8.2.3" />
 
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
@@ -28,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\building-blocks\contracts\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\FraudService.Application\FraudService.Application.csproj" />
+    <ProjectReference Include="..\FraudService.Infrastructure\FraudService.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

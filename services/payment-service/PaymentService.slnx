@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/API/">
+    <Project Path="../../building-blocks/contracts/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj" />
+    <Project Path="PaymentService.API/PaymentService.API.csproj" />
+    <Project Path="PaymentService.Application/PaymentService.Application.csproj" />
+    <Project Path="PaymentService.Infrastructure/PaymentService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Application/" />
+</Solution>

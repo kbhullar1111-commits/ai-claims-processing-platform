@@ -1,26 +1,26 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PaymentService.Application;
+using FraudService.Application;
 
-namespace PaymentService.Infrastructure;
+namespace FraudService.Infrastructure;
 
-public sealed class PaymentMessagePump(
+public sealed class FraudCheckMessagePump(
     ServiceBusClient busClient,
-    PaymentMessagingOptions options,
-    IPaymentProcessor paymentProcessor,
-    PaymentProcessedPublisher publisher,
-    ILogger<PaymentMessagePump> logger) : BackgroundService
+    FraudCheckMessagingOptions options,
+    IFraudCheckProcessor fraudCheckProcessor,
+    FraudCheckPublisher publisher,
+    ILogger<FraudCheckMessagePump> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation(
-            "Starting payment message pump. Queue={Queue}, PaymentProcessedTopic={Topic}, MaxConcurrentCalls={MaxConcurrentCalls}",
-            options.PaymentServiceQueue,
-            options.PaymentProcessedTopic,
+            "Starting fraud check message pump. Queue={Queue}, FraudCheckCompletedTopic={Topic}, MaxConcurrentCalls={MaxConcurrentCalls}",
+            options.FraudServiceQueue,
+            options.FraudCheckCompletedTopic,
             options.MaxConcurrentCalls);
 
-        var processor = busClient.CreateProcessor(options.PaymentServiceQueue, new ServiceBusProcessorOptions
+        var processor = busClient.CreateProcessor(options.FraudServiceQueue, new ServiceBusProcessorOptions
         {
             AutoCompleteMessages = false,
             MaxConcurrentCalls = options.MaxConcurrentCalls,
@@ -43,7 +43,7 @@ public sealed class PaymentMessagePump(
         {
             var rawBody = args.Message.Body.ToString();
 
-            if (!MassTransitInterop.TryDeserializeProcessPayment(rawBody, out var command, out var correlationId, out var conversationId))
+            if (!MassTransitInterop.TryDeserializeRunFraudCheck(rawBody, out var command, out var correlationId, out var conversationId))
             {
                 var payloadPreview = rawBody.Length > 300
                     ? rawBody[..300]
@@ -51,7 +51,7 @@ public sealed class PaymentMessagePump(
 
                 logger.LogWarning(
                     "Skipping unsupported message payload on queue {QueueName}. MessageId={MessageId}, ContentType={ContentType}, Subject={Subject}, PayloadPreview={PayloadPreview}",
-                    options.PaymentServiceQueue,
+                    options.FraudServiceQueue,
                     args.Message.MessageId,
                     args.Message.ContentType,
                     args.Message.Subject,
@@ -60,15 +60,16 @@ public sealed class PaymentMessagePump(
                 await args.DeadLetterMessageAsync(
                     args.Message,
                     "UnsupportedPayload",
-                    "Message could not be deserialized as ProcessPayment or MassTransit envelope.");
+                    "Message could not be deserialized as RunFraudCheck or MassTransit envelope.");
                 return;
             }
 
             try
             {
-                var processed = await paymentProcessor.ProcessAsync(command!, args.CancellationToken);
-                await ExecuteWithRetryAsync(
-                    ct => publisher.PublishAsync(processed, correlationId, conversationId, ct),
+                var result = await fraudCheckProcessor.ProcessAsync(command, stoppingToken);
+
+                    await ExecuteWithRetryAsync(
+                    ct => publisher.PublishAsync(result, correlationId, conversationId, ct),
                     options.HandlerRetryMaxAttempts,
                     options.HandlerRetryBaseDelayMs,
                     options.HandlerRetryMaxDelaySeconds,
@@ -86,12 +87,12 @@ public sealed class PaymentMessagePump(
                         "Moving message to DLQ after delivery attempts exhausted. MessageId={MessageId}, DeliveryCount={DeliveryCount}, Queue={Queue}",
                         args.Message.MessageId,
                         args.Message.DeliveryCount,
-                        options.PaymentServiceQueue);
+                        options.FraudServiceQueue);
 
                     await args.DeadLetterMessageAsync(
                         args.Message,
                         "ProcessingFailed",
-                        $"Payment processing failed after {args.Message.DeliveryCount} deliveries.");
+                        $"Fraud check completed publish failed after {args.Message.DeliveryCount} deliveries.");
                     return;
                 }
 
@@ -100,7 +101,7 @@ public sealed class PaymentMessagePump(
                     "Message processing failed; broker retry will continue. MessageId={MessageId}, DeliveryCount={DeliveryCount}, Queue={Queue}",
                     args.Message.MessageId,
                     args.Message.DeliveryCount,
-                    options.PaymentServiceQueue);
+                    options.FraudServiceQueue);
 
                 throw;
             }

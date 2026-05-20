@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/API/">
+    <Project Path="../../building-blocks/contracts/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj" />
+    <Project Path="FraudService.API/FraudService.API.csproj" />
+    <Project Path="FraudService.Application/FraudService.Application.csproj" />
+    <Project Path="FraudService.Infrastructure/FraudService.Infrastructure.csproj" />
+  </Folder>
+</Solution>
