@@ -1,10 +1,11 @@
 extern alias azureidentity;
 
+using Azure.Messaging.ServiceBus;
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Commands.CreateNotification;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using NotificationService.Infrastructure.Messaging.Consumers;
+using Microsoft.Extensions.Options;
+using NotificationService.Infrastructure.Messaging;
 using NotificationService.Infrastructure.Persistence;
 using NotificationService.Infrastructure.Persistence.Repositories;
 using NotificationService.Infrastructure.Workers;
@@ -51,12 +52,6 @@ if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
         "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
 }
 
-if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
-{
-    throw new InvalidOperationException(
-        "Missing Service Bus connection string. Ensure Key Vault secret 'ConnectionStrings--ServiceBus' exists.");
-}
-
 var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
 Directory.CreateDirectory(logDirectory);
 
@@ -68,7 +63,6 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
-        .MinimumLevel.Override("MassTransit", LogEventLevel.Warning)
         .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
         .Enrich.FromLogContext()
         .Enrich.WithSpan()
@@ -110,44 +104,71 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<NotificationDatabaseHealthCheck>("postgres", tags: ["ready"]);
 
-var notificationServiceQueue = builder.Configuration["Messaging:Queues:NotificationServiceQueue"] ?? "notification-service";
-var claimSubmittedTopic = builder.Configuration["Messaging:Topics:ClaimSubmittedTopic"] ?? "claim-submitted";
+var serviceBusNamespace = builder.Configuration["ServiceBus:FullyQualifiedNamespace"];
 
-builder.Services.AddMassTransit(x =>
+if (string.IsNullOrWhiteSpace(serviceBusNamespace) && string.IsNullOrWhiteSpace(serviceBusConnectionString))
 {
-    // Prevent runtime creation of Fault<T> topics/subscriptions when consumers throw.
-    // We rely on the _error queue and logs for operational visibility.
-    x.AddConfigureEndpointsCallback((name, cfg) =>
+    throw new InvalidOperationException(
+        "Missing Service Bus configuration. Set ConnectionStrings:ServiceBus (preferred) or ServiceBus:FullyQualifiedNamespace for Managed Identity.");
+}
+
+builder.Services.Configure<NotificationMessagingOptions>(
+    builder.Configuration.GetSection(NotificationMessagingOptions.SectionName));
+
+builder.Services.AddSingleton(sp =>
+{
+    var configured = sp.GetRequiredService<IOptions<NotificationMessagingOptions>>().Value;
+
+    var queueFromNestedSection = builder.Configuration["Messaging:Queues:NotificationServiceQueue"];
+    var topicFromNestedSection = builder.Configuration["Messaging:Topics:ClaimSubmittedTopic"];
+    var subscriptionFromNestedSection = builder.Configuration["Messaging:Subscriptions:ClaimSubmittedSubscription"];
+
+    return new NotificationMessagingOptions
     {
-        cfg.PublishFaults = false;
-    });
-
-    x.AddConsumer<ClaimSubmittedConsumer>()
-        .ExcludeFromConfigureEndpoints();
-
-    x.AddConsumer<RequestDocumentsConsumer>()
-        .ExcludeFromConfigureEndpoints();
-
-    x.UsingAzureServiceBus((context, cfg) =>
-    {
-        cfg.Host(serviceBusConnectionString, h =>
-        {
-            h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
-        });
-
-        cfg.Message<BuildingBlocks.Contracts.Claims.ClaimSubmitted>(m => m.SetEntityName(claimSubmittedTopic));
-
-        cfg.ReceiveEndpoint(notificationServiceQueue, e =>
-        {
-            e.ConfigureConsumeTopology = false;
-            e.Subscribe<BuildingBlocks.Contracts.Claims.ClaimSubmitted>(claimSubmittedTopic);
-            e.ConfigureConsumer<ClaimSubmittedConsumer>(context);
-            e.ConfigureConsumer<RequestDocumentsConsumer>(context);
-        });
-
-        cfg.ConfigureEndpoints(context);
-    });
+        NotificationServiceQueue = string.IsNullOrWhiteSpace(queueFromNestedSection)
+            ? configured.NotificationServiceQueue
+            : queueFromNestedSection,
+        ClaimSubmittedTopic = string.IsNullOrWhiteSpace(topicFromNestedSection)
+            ? configured.ClaimSubmittedTopic
+            : topicFromNestedSection,
+        ClaimSubmittedSubscription = string.IsNullOrWhiteSpace(subscriptionFromNestedSection)
+            ? configured.ClaimSubmittedSubscription
+            : subscriptionFromNestedSection,
+        MaxConcurrentCalls = configured.MaxConcurrentCalls,
+        PrefetchCount = configured.PrefetchCount,
+        MaxAutoLockRenewalMinutes = configured.MaxAutoLockRenewalMinutes,
+        HandlerRetryMaxAttempts = configured.HandlerRetryMaxAttempts,
+        HandlerRetryBaseDelayMs = configured.HandlerRetryBaseDelayMs,
+        HandlerRetryMaxDelaySeconds = configured.HandlerRetryMaxDelaySeconds,
+        MaxDeliveryAttemptsBeforeDeadLetter = configured.MaxDeliveryAttemptsBeforeDeadLetter
+    };
 });
+
+var clientOptions = new ServiceBusClientOptions
+{
+    TransportType = ServiceBusTransportType.AmqpWebSockets,
+    RetryOptions = new ServiceBusRetryOptions
+    {
+        Mode = ServiceBusRetryMode.Exponential,
+        MaxRetries = 5,
+        Delay = TimeSpan.FromMilliseconds(800),
+        MaxDelay = TimeSpan.FromSeconds(8),
+        TryTimeout = TimeSpan.FromSeconds(60)
+    }
+};
+
+builder.Services.AddSingleton(_ =>
+{
+    if (!string.IsNullOrWhiteSpace(serviceBusConnectionString))
+    {
+        return new ServiceBusClient(serviceBusConnectionString, clientOptions);
+    }
+
+    var credential = new azureidentity::Azure.Identity.DefaultAzureCredential();
+    return new ServiceBusClient(serviceBusNamespace!, credential, clientOptions);
+});
+
+builder.Services.AddHostedService<NotificationMessagePump>();
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -180,7 +201,6 @@ builder.Services.AddOpenTelemetry()
             })
             .AddHttpClientInstrumentation()
             .AddEntityFrameworkCoreInstrumentation()
-            .AddSource("MassTransit")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
                     .AddService(TelemetryConstants.ServiceName));
