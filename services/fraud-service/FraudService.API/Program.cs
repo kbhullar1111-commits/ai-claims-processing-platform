@@ -72,12 +72,11 @@ builder.Services.AddHealthChecks()
 builder.Services.AddSingleton<IFraudCheckProcessor, FraudCheckProcessor>();
 
 var serviceBusNamespace = builder.Configuration["ServiceBus:FullyQualifiedNamespace"];
-var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
 
-if (string.IsNullOrWhiteSpace(serviceBusNamespace) && string.IsNullOrWhiteSpace(serviceBusConnectionString))
+if (string.IsNullOrWhiteSpace(serviceBusNamespace))
 {
     throw new InvalidOperationException(
-    "Missing Service Bus configuration. Set ConnectionStrings:ServiceBus (preferred) or ServiceBus:FullyQualifiedNamespace for Managed Identity.");
+        "Missing Service Bus configuration. Set ServiceBus:FullyQualifiedNamespace in configuration (Key Vault, appsettings.json, or environment variables).");
 }
 
 builder.Services.Configure<FraudCheckMessagingOptions>(builder.Configuration.GetSection(FraudCheckMessagingOptions.SectionName));
@@ -120,14 +119,24 @@ var clientOptions = new ServiceBusClientOptions
     }
 };
 
-builder.Services.AddSingleton(_ =>
+builder.Services.AddSingleton(sp =>
 {
-    if (!string.IsNullOrWhiteSpace(serviceBusConnectionString))
-    {
-        return new ServiceBusClient(serviceBusConnectionString, clientOptions);
-    }
+    var logger = sp.GetRequiredService<ILogger<Program>>();
 
-    return new ServiceBusClient(serviceBusNamespace!, defaultAzureCredential, clientOptions);
+    try
+    {
+        return new ServiceBusClient(serviceBusNamespace!, defaultAzureCredential, clientOptions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex,
+            "Failed to create ServiceBusClient with Managed Identity using DefaultAzureCredential for namespace {ServiceBusNamespace}",
+            serviceBusNamespace);
+
+        throw new InvalidOperationException(
+            "Unable to create the Service Bus client using Managed Identity. Check that the managed identity has access to the Service Bus namespace and that the DefaultAzureCredential configuration is correct.",
+            ex);
+    }
 });
 
 builder.Services.AddSingleton<FraudCheckPublisher>();

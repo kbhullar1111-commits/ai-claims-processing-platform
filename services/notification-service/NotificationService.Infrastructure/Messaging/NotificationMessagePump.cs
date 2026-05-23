@@ -185,6 +185,14 @@ public sealed class NotificationMessagePump(
     {
         var rawBody = args.Message.Body.ToString();
 
+        logger.LogInformation(
+            "Notification queue message received. Queue={Queue}, MessageId={MessageId}, DeliveryCount={DeliveryCount}, ContentType={ContentType}, Subject={Subject}",
+            options.NotificationServiceQueue,
+            args.Message.MessageId,
+            args.Message.DeliveryCount,
+            args.Message.ContentType,
+            args.Message.Subject);
+
         if (!MassTransitInterop.TryDeserializeRequestDocuments(rawBody, out var message, out var envelopeMessageId))
         {
             if (MassTransitInterop.TryDeserializeClaimSubmitted(rawBody, out var claimSubmitted, out _))

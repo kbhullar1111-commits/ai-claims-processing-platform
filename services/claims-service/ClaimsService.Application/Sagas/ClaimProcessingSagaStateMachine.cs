@@ -82,7 +82,6 @@ public class ClaimProcessingSagaStateMachine :
         Event(() => PaymentProcessed, x =>
         {
             x.CorrelateById(context => context.Message.ClaimId);
-            x.ConfigureConsumeTopology = false;
         });
 
         Initially(
@@ -102,7 +101,12 @@ public class ClaimProcessingSagaStateMachine :
                         context.Saga.ClaimId,
                         context.Saga.ClaimAmount,
                         string.Join(", ", context.Saga.RequiredDocuments));
-                })                                  
+                })
+                .Then(context => _logger.LogInformation(
+                    "Sending RequestDocuments to notification queue. SagaId={SagaId}, ClaimId={ClaimId}, Queue={Queue}",
+                    context.Saga.CorrelationId,
+                    context.Saga.ClaimId,
+                    _notificationServiceQueueUri))
                 .Send(_notificationServiceQueueUri, context =>
                     new RequestDocuments(
                         context.Message.ClaimId,

@@ -200,6 +200,7 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint(claimsServiceQueue, e =>
         {
+            e.PublishFaults = false;
             e.ConfigureConsumeTopology = false;
             e.ConfigureConsumer<ClaimStatusConsumer>(context);
         });
@@ -216,7 +217,7 @@ builder.Services.AddMassTransit(x =>
             "document-uploaded-raw",
             e =>
             {
-
+                e.PublishFaults = false;
                 e.UseRawJsonDeserializer(
                     RawSerializerOptions.AnyMessageType,
                     isDefault: true);
@@ -226,6 +227,7 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint(sagaIngressQueue, e =>
         {
+            e.PublishFaults = false;
             e.ConfigureConsumeTopology = false;
 
             e.Subscribe<ClaimSubmitted>(claimSubmittedTopic);

@@ -44,16 +44,12 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
 }
 
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus");
 
 if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
     throw new InvalidOperationException(
         "Missing Application Insights connection string. Ensure Key Vault secret 'ApplicationInsights--ConnectionString' exists.");
 }
-
-var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
-Directory.CreateDirectory(logDirectory);
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 {
@@ -69,11 +65,6 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
         .Enrich.WithProperty("Application", "NotificationService.API")
         .Enrich.WithProperty("Service", "notification-api")
         .WriteTo.Console()
-        .WriteTo.File(
-            Path.Combine(logDirectory, "notification-.log"),
-            rollingInterval: RollingInterval.Day,
-            retainedFileCountLimit: 14,
-            shared: true)
         .WriteTo.ApplicationInsights(
             services.GetRequiredService<Microsoft.ApplicationInsights.TelemetryClient>(),
             TelemetryConverter.Traces);
@@ -106,10 +97,10 @@ builder.Services.AddHealthChecks()
 
 var serviceBusNamespace = builder.Configuration["ServiceBus:FullyQualifiedNamespace"];
 
-if (string.IsNullOrWhiteSpace(serviceBusNamespace) && string.IsNullOrWhiteSpace(serviceBusConnectionString))
+if (string.IsNullOrWhiteSpace(serviceBusNamespace))
 {
     throw new InvalidOperationException(
-        "Missing Service Bus configuration. Set ConnectionStrings:ServiceBus (preferred) or ServiceBus:FullyQualifiedNamespace for Managed Identity.");
+        "Missing Service Bus configuration. Set ServiceBus:FullyQualifiedNamespace in configuration (Key Vault, appsettings.json, or environment variables).");
 }
 
 builder.Services.Configure<NotificationMessagingOptions>(
@@ -157,15 +148,25 @@ var clientOptions = new ServiceBusClientOptions
     }
 };
 
-builder.Services.AddSingleton(_ =>
+builder.Services.AddSingleton(sp =>
 {
-    if (!string.IsNullOrWhiteSpace(serviceBusConnectionString))
-    {
-        return new ServiceBusClient(serviceBusConnectionString, clientOptions);
-    }
-
+    var logger = sp.GetRequiredService<ILogger<Program>>();
     var credential = new azureidentity::Azure.Identity.DefaultAzureCredential();
-    return new ServiceBusClient(serviceBusNamespace!, credential, clientOptions);
+
+    try
+    {
+        return new ServiceBusClient(serviceBusNamespace!, credential, clientOptions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex,
+            "Failed to create ServiceBusClient with Managed Identity using DefaultAzureCredential for namespace {ServiceBusNamespace}",
+            serviceBusNamespace);
+
+        throw new InvalidOperationException(
+            "Unable to create the Service Bus client using Managed Identity. Check that the managed identity has access to the Service Bus namespace and that the DefaultAzureCredential configuration is correct.",
+            ex);
+    }
 });
 
 builder.Services.AddHostedService<NotificationMessagePump>();

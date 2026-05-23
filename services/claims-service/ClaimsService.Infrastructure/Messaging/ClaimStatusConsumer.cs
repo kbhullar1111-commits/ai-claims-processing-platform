@@ -53,6 +53,8 @@ public class ClaimStatusConsumer :
         _logger.LogInformation(
             "Received MarkClaimUnderReview. ClaimId={ClaimId}",
             context.Message.ClaimId);
+
+
         await _mediator.Send(new MarkClaimUnderReviewCommand(context.Message.ClaimId));
     }
 
