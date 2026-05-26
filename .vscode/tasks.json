@@ -25,8 +25,21 @@
       ],
       "problemMatcher": "$msCompile",
       "group": "build"
-    },
-    {
+    },    {
+      "label": "build-gateway",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/services/gateway-service/GatewayService.API/GatewayService.API.csproj",
+        "/property:GenerateFullPaths=true"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },    {
       "label": "build-document-service",
       "command": "dotnet",
       "type": "process",

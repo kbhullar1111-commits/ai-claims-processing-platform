@@ -10,6 +10,9 @@ using Serilog.Events;
 using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.HttpLogging;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,11 +76,16 @@ builder.Services.AddApplicationInsightsTelemetry(options =>
     options.ConnectionString = appInsightsConnectionString;
 });
 
+
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live", "ready"]);
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
-builder.Services.AddOpenTelemetry().UseAzureMonitor()
+builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    })
     .WithTracing(tracerProvider =>
     {
         tracerProvider
