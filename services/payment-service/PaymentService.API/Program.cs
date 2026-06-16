@@ -12,6 +12,8 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Enrichers.Span;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 
 var builder = WebApplication.CreateBuilder(args);
 var defaultAzureCredential = new azureidentity::Azure.Identity.DefaultAzureCredential();
@@ -142,6 +144,10 @@ builder.Services.AddHostedService<PaymentMessagePump>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    })
     .WithTracing(tracerProvider =>
     {
         tracerProvider

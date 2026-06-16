@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -120,6 +122,10 @@ builder.Services.AddScoped<IObjectStorage>(sp =>
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 
 builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    })
     .WithTracing(tracerProvider =>
     {
         tracerProvider
