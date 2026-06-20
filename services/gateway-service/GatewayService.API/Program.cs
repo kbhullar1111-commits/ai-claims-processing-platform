@@ -1,5 +1,7 @@
 extern alias azureidentity;
 
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -36,7 +38,8 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
-var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+//var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+var appInsightsConnectionString = "InstrumentationKey=1e5a9a7d-fc4f-41eb-a2ae-4d79562a6983;IngestionEndpoint=https://centralindia-0.in.applicationinsights.azure.com/;LiveEndpoint=https://centralindia.livediagnostics.monitor.azure.com/;ApplicationId=24ed07b9-a9b5-4973-986a-aeff26cd89a4";
 
 if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
@@ -107,10 +110,111 @@ builder.Services.AddOpenTelemetry()
     });
 
 builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var tenantId =
+            builder.Configuration["Authentication:TenantId"];
+
+        var apiClientId =
+            builder.Configuration["Authentication:ApiClientId"];
+
+        options.Authority =
+            $"https://login.microsoftonline.com/{tenantId}/v2.0";
+
+        options.TokenValidationParameters = new()
+        {
+            ValidAudiences = new[]
+            {
+                apiClientId,
+                $"api://{apiClientId}"
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "Gateway API",
+        Version = "v1"
+    });
+
+    options.AddSecurityDefinition("oauth2",
+    new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.OAuth2,
+
+        Flows = new OpenApiOAuthFlows
+        {
+            AuthorizationCode = new OpenApiOAuthFlow
+            {
+                AuthorizationUrl = new Uri(
+                    $"https://login.microsoftonline.com/{builder.Configuration["Authentication:TenantId"]}/oauth2/v2.0/authorize"),
+
+                TokenUrl = new Uri(
+                    $"https://login.microsoftonline.com/{builder.Configuration["Authentication:TenantId"]}/oauth2/v2.0/token"),
+
+                Scopes = new Dictionary<string, string>
+                {
+                    {
+                        $"api://{builder.Configuration["Authentication:ApiClientId"]}/claims.readwrite",
+                        "Claims API Access"
+                    }
+                }
+            }
+        }
+    });
+
+options.AddSecurityRequirement(
+    new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "oauth2"
+                }
+            },
+            new[]
+            {
+                $"api://{builder.Configuration["Authentication:ApiClientId"]}/claims.readwrite"
+            }
+        }
+    });
+
+});
+
 var app = builder.Build();
+
+app.UseSwagger();
+
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint(
+        "/swagger/v1/swagger.json",
+        "Gateway API v1");
+
+    options.OAuthClientId(
+        builder.Configuration["Authentication:SwaggerClientId"]);
+
+    options.OAuthUsePkce();
+
+    options.OAuthScopeSeparator(" ");
+
+    options.OAuthScopes(
+        $"api://{builder.Configuration["Authentication:ApiClientId"]}/claims.readwrite");
+});
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
@@ -120,6 +224,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 app.UseHttpLogging();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
@@ -130,6 +236,17 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+app.MapGet("/me", (HttpContext context) =>
+{
+    return Results.Ok(
+        context.User.Claims.Select(c => new
+        {
+            c.Type,
+            c.Value
+        }));
+})
+.RequireAuthorization();
 
 app.MapReverseProxy();
 
