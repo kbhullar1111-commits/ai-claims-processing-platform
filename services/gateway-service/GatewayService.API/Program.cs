@@ -38,8 +38,7 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
-//var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-var appInsightsConnectionString = "InstrumentationKey=1e5a9a7d-fc4f-41eb-a2ae-4d79562a6983;IngestionEndpoint=https://centralindia-0.in.applicationinsights.azure.com/;LiveEndpoint=https://centralindia.livediagnostics.monitor.azure.com/;ApplicationId=24ed07b9-a9b5-4973-986a-aeff26cd89a4";
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 
 if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
@@ -119,6 +118,8 @@ builder.Services
         var apiClientId =
             builder.Configuration["Authentication:ApiClientId"];
 
+        options.MapInboundClaims = false;
+
         options.Authority =
             $"https://login.microsoftonline.com/{tenantId}/v2.0";
 
@@ -132,7 +133,15 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ClaimsReadWrite", policy =>
+    {
+        policy.RequireClaim(
+            "scp",
+            "claims.readwrite");
+    });
+});
 
 builder.Services
     .AddReverseProxy()
@@ -237,16 +246,19 @@ app.MapHealthChecks("/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-app.MapGet("/me", (HttpContext context) =>
+app.MapGet("/Token", (HttpContext context) =>
 {
-    return Results.Ok(
-        context.User.Claims.Select(c => new
+    return Results.Ok(new
+    {
+        AccessToken = context.Request.Headers.Authorization.ToString(),
+        Claims = context.User.Claims.Select(c => new
         {
             c.Type,
             c.Value
-        }));
+        })
+    });
 })
-.RequireAuthorization();
+.RequireAuthorization("ClaimsReadWrite");
 
 app.MapReverseProxy();
 
