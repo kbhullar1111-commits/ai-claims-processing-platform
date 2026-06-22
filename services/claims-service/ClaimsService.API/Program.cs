@@ -3,6 +3,7 @@ extern alias azureidentity;
 using ClaimsService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ClaimsService.Application.Interfaces;
+using ClaimsService.Infrastructure.Identity;
 using ClaimsService.Infrastructure.Repositories;
 using ClaimsService.Infrastructure.Observability.Metrics;
 using ClaimsService.Infrastructure.Observability.Constants;
@@ -241,6 +242,10 @@ builder.Services.AddMassTransit(x =>
         });
     });
 });
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddSingleton<ICustomerResolver, StaticCustomerResolver>();
 
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
