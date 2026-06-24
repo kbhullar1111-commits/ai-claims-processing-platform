@@ -13,7 +13,7 @@ public sealed class StaticCustomerResolver
             "424310e3-0169-4311-b644-bcbe013853c7",
             new CustomerContext
             {
-                CustomerId = "d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10"
+                CustomerId = Guid.Parse("d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10")
             }
         }
     };

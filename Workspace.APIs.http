@@ -1,6 +1,13 @@
-@claimsHost = http://localhost:5001
+@gatewayHost = https://localhost:7063
+@claimsApi = {{gatewayHost}}/api/claims
 @notificationHost = http://localhost:5002
-@documentHost = http://localhost:5003
+
+@documentApi = {{gatewayHost}}/api/documents
+
+@token = 333333333333333333333333333333333333333333
+
+@claimId=8a420d43-7d29-4ac8-af6e-04036b4ec056
+//@claimId = {{submitClaim.response.body.$.claimId}}
 
 ### Outbox verification flow
 ### 1. Run infrastructure/docker/commands/check-outbox.cmd to capture the baseline.
@@ -17,34 +24,52 @@
 ### =====================
 
 ### Submit claim
-POST {{claimsHost}}/claims
+POST {{claimsApi}}
 Content-Type: application/json
 Accept: application/json
+Authorization: Bearer {{token}}
 
 {
-  "customerId": "d9f4cb92-a4b3-4cc6-a8f8-d36f4745af10",
   "policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
   "claimAmount": 5000.20
 }
 
+
+
+### Get My Claims
+
+GET {{claimsApi}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Get Claim Details
+
+GET {{claimsApi}}/{{claimId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+
+
 ### Claims health
-GET {{claimsHost}}/health
+GET {{gatewayHost}}/api/claims/health
 Accept: application/json
 
 ### Claims liveness
-GET {{claimsHost}}/live
+GET {{gatewayHost}}/api/claims/live
 Accept: application/json
 
 ### Claims readiness
-GET {{claimsHost}}/ready
+GET {{gatewayHost}}/api/claims/ready
 Accept: application/json
 
 ### Claims metrics (Prometheus)
-GET {{claimsHost}}/metrics
+GET {{gatewayHost}}/api/claims/metrics
 Accept: text/plain
 
 ### Claims Swagger JSON (development)
-GET {{claimsHost}}/swagger/v1/swagger.json
+GET {{gatewayHost}}/api/claims/swagger/v1/swagger.json
 Accept: application/json
 
 ### =====================
@@ -53,12 +78,13 @@ Accept: application/json
 
 ### Generate upload URL - ID Proof
 # @name generateUploadUrlIdProof
-POST {{documentHost}}/documents/upload-url
+POST {{documentApi}}/upload-url
 Content-Type: application/json
 Accept: application/json
+Authorization: Bearer {{token}}
 
 {
-  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
+  "claimId": "{{claimId}}",
   "documentType": "ID_Proof",
   "fileName": "id-proof.pdf"
 }
@@ -74,12 +100,13 @@ x-ms-blob-type: BlockBlob
 
 ### Generate upload URL - Accident Photos
 # @name generateUploadUrlAccidentPhotos
-POST {{documentHost}}/documents/upload-url
+POST {{documentApi}}/upload-url
 Content-Type: application/json
 Accept: application/json
+Authorization: Bearer {{token}}
 
 {
-  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
+  "claimId": "{{claimId}}",
   "documentType": "Accident_Photos",
   "fileName": "accident-photos.pdf"
 }
@@ -95,12 +122,13 @@ x-ms-blob-type: BlockBlob
 
 ### Generate upload URL - Police Report
 # @name generateUploadUrlPoliceReport
-POST {{documentHost}}/documents/upload-url
+POST {{documentApi}}/upload-url
 Content-Type: application/json
 Accept: application/json
+Authorization: Bearer {{token}}
 
 {
-  "claimId": "1b30c74a-db1a-4168-a4e9-f9e70aa7290f",
+  "claimId": "{{claimId}}",
   "documentType": "Police_Report",
   "fileName": "police-report.pdf"
 }
@@ -115,7 +143,7 @@ x-ms-blob-type: BlockBlob
 < ./police-report.pdf
 
 ### Document Swagger JSON (development)
-GET {{documentHost}}/swagger/v1/swagger.json
+GET {{gatewayHost}}/api/documents/swagger/v1/swagger.json
 Accept: application/json
 
 ### =====================

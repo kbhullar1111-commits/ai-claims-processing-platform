@@ -8,4 +8,6 @@ public interface IClaimRepository
 
     Task<Claim?> GetByIdAsync(Guid claimId);
 
+    Task<IReadOnlyList<Claim>> GetByCustomerIdAsync(Guid customerId);
+
 }

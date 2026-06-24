@@ -24,4 +24,13 @@ public class ClaimRepository : IClaimRepository
         return await _dbContext.Claims
             .FirstOrDefaultAsync(c => c.Id == claimId);
     }
+
+    public async Task<IReadOnlyList<Claim>> GetByCustomerIdAsync(Guid customerId)
+    {
+        return await _dbContext.Claims
+            .Where(c => c.CustomerId == customerId)
+            .OrderByDescending(c => c.SubmittedAt)
+            .ToListAsync();
+    }
+
 }

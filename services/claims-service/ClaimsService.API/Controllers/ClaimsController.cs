@@ -1,4 +1,5 @@
 using ClaimsService.Application.Commands;
+using ClaimsService.Application.Queries;
 using ClaimsService.Application.Models;
 using ClaimsService.Application.Interfaces;
 using MediatR;
@@ -36,21 +37,34 @@ public class ClaimsController : ControllerBase
     {
         _logger.LogInformation("Submitting claim for user: {UserId}, email: {Email}, name: {Name}", _currentUser.UserId, _currentUser.Email, _currentUser.Name);
         var customer = _customerResolver.Resolve( _currentUser.UserId!);
-        if(customer == null || string.IsNullOrEmpty(customer.CustomerId))
-        {
-            _logger.LogWarning(
-                "Customer mapping not found. UserId={UserId}, Email={Email}",
-                _currentUser.UserId,
-                _currentUser.Email);
-            return NotFound("Customer not found");
-        }
+
         var command = new SubmitClaimCommand(
-            Guid.Parse(customer.CustomerId),
+            customer.CustomerId,
             Guid.Parse(request.PolicyId),
             request.ClaimAmount);
 
         var claimId = await _mediator.Send(command);
 
         return Ok(new { ClaimId = claimId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetMyClaims()
+    {
+        var query = new GetMyClaimsQuery();
+        var claims = await _mediator.Send(query);
+        return Ok(claims);
+    }
+
+    [HttpGet("{claimId:guid}")]
+    public async Task<IActionResult> GetClaimDetails(Guid claimId)
+    {
+        var query = new GetClaimDetailsQuery(claimId);
+        var claim = await _mediator.Send(query);
+        if (claim == null)
+        {
+            return NotFound();
+        }
+        return Ok(claim);
     }
 }
