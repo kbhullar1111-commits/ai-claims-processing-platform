@@ -33,4 +33,18 @@ public class ClaimRepository : IClaimRepository
             .ToListAsync();
     }
 
+    public async Task AddStatusHistoryAsync(ClaimStatusHistory history)
+    {
+        await _dbContext.ClaimStatusHistories
+            .AddAsync(history);
+    }
+
+    public async Task<IReadOnlyList<ClaimStatusHistory>> GetStatusHistoryAsync(Guid claimId)
+    {
+        return await _dbContext.ClaimStatusHistories
+            .Where(x => x.ClaimId == claimId)
+            .OrderBy(x => x.OccurredAt)
+            .ToListAsync();
+    }
+
 }

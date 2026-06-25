@@ -10,4 +10,8 @@ public interface IClaimRepository
 
     Task<IReadOnlyList<Claim>> GetByCustomerIdAsync(Guid customerId);
 
+    Task AddStatusHistoryAsync(ClaimStatusHistory history);
+
+    Task<IReadOnlyList<ClaimStatusHistory>> GetStatusHistoryAsync(Guid claimId);
+
 }

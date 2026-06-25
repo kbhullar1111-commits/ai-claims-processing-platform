@@ -9,10 +9,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace ClaimsService.Infrastructure.Persistance.Migrations
+namespace ClaimsService.Infrastructure.Migrations
 {
     [DbContext(typeof(ClaimsDbContext))]
-    [Migration("20260505131154_InitialCreate")]
+    [Migration("20260625101527_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -91,9 +91,10 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     b.Property<Guid>("PolicyId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Status")
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("integer");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("timestamp with time zone");
@@ -101,6 +102,30 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("claims", (string)null);
+                });
+
+            modelBuilder.Entity("ClaimsService.Domain.Entities.ClaimStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClaimId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClaimId");
+
+                    b.ToTable("claim_status_histories", (string)null);
                 });
 
             modelBuilder.Entity("MassTransit.EntityFrameworkCoreIntegration.InboxState", b =>
@@ -271,6 +296,15 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     b.HasIndex("Created");
 
                     b.ToTable("OutboxState");
+                });
+
+            modelBuilder.Entity("ClaimsService.Domain.Entities.ClaimStatusHistory", b =>
+                {
+                    b.HasOne("ClaimsService.Domain.Entities.Claim", null)
+                        .WithMany()
+                        .HasForeignKey("ClaimId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

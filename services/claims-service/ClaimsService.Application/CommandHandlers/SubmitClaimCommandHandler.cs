@@ -3,6 +3,7 @@ using BuildingBlocks.Contracts.Claims;
 using ClaimsService.Application.Commands;
 using ClaimsService.Application.Interfaces;
 using ClaimsService.Domain.Entities;
+using ClaimsService.Domain.Enums;
 
 namespace ClaimsService.Application.Handlers;
 
@@ -48,6 +49,15 @@ public class SubmitClaimCommandHandler : IRequestHandler<SubmitClaimCommand, Gui
         await _claimRepository.AddAsync(claim);
 
         await _eventPublisher.PublishAsync(claimSubmittedEvent);
+
+        await _claimRepository.AddStatusHistoryAsync(
+            new ClaimStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ClaimId = claim.Id,
+                Status = ClaimStatus.Submitted,
+                OccurredAt = DateTime.UtcNow
+            });
 
         await _unitOfWork.CommitAsync(cancellationToken);
 

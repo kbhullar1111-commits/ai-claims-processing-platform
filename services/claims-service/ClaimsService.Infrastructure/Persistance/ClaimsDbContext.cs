@@ -15,6 +15,7 @@ public class ClaimsDbContext : DbContext
     }
 
     public DbSet<Claim> Claims => Set<Claim>();
+    public DbSet<ClaimStatusHistory> ClaimStatusHistories => Set<ClaimStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

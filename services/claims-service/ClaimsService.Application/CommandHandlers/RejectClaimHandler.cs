@@ -2,6 +2,8 @@ using ClaimsService.Application.Commands;
 using ClaimsService.Application.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using ClaimsService.Domain.Entities;
+using ClaimsService.Domain.Enums;
 
 namespace ClaimsService.Application.Handlers;
 
@@ -32,6 +34,15 @@ public class RejectClaimHandler : IRequestHandler<RejectClaimCommand, Guid>
             throw new Exception($"Claim with ID {command.ClaimId} not found.");
 
         claim.Reject();
+
+        await _repo.AddStatusHistoryAsync(
+            new ClaimStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ClaimId = claim.Id,
+                Status = ClaimStatus.Rejected,
+                OccurredAt = DateTime.UtcNow
+            });
 
         _metrics.ClaimRejected(command.Reason ?? "unknown");
 

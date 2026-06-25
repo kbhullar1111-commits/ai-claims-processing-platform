@@ -30,6 +30,7 @@ using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,7 +94,12 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
             TelemetryConverter.Traces);
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter());
+});
+
 builder.Services.AddApplicationInsightsTelemetry(options =>
 {
     options.ConnectionString = appInsightsConnectionString;

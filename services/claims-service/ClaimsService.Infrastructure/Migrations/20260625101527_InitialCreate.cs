@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace ClaimsService.Infrastructure.Persistance.Migrations
+namespace ClaimsService.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -43,7 +43,7 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
                     PolicyId = table.Column<Guid>(type: "uuid", nullable: false),
                     ClaimAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    Status = table.Column<int>(type: "integer", maxLength: 50, nullable: false),
+                    Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     SubmittedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -122,6 +122,31 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
                     table.PrimaryKey("PK_OutboxState", x => x.OutboxId);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "claim_status_histories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClaimId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    OccurredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_claim_status_histories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_claim_status_histories_claims_ClaimId",
+                        column: x => x.ClaimId,
+                        principalTable: "claims",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_claim_status_histories_ClaimId",
+                table: "claim_status_histories",
+                column: "ClaimId");
+
             migrationBuilder.CreateIndex(
                 name: "IX_InboxState_Delivered",
                 table: "InboxState",
@@ -159,10 +184,10 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ClaimProcessingSagaState");
+                name: "claim_status_histories");
 
             migrationBuilder.DropTable(
-                name: "claims");
+                name: "ClaimProcessingSagaState");
 
             migrationBuilder.DropTable(
                 name: "InboxState");
@@ -172,6 +197,9 @@ namespace ClaimsService.Infrastructure.Persistance.Migrations
 
             migrationBuilder.DropTable(
                 name: "OutboxState");
+
+            migrationBuilder.DropTable(
+                name: "claims");
         }
     }
 }

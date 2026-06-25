@@ -2,6 +2,8 @@ using ClaimsService.Application.Commands;
 using ClaimsService.Application.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using ClaimsService.Domain.Entities;
+using ClaimsService.Domain.Enums;
 
 namespace ClaimsService.Application.Handlers;
 
@@ -29,6 +31,15 @@ public class MarkClaimUnderReviewHandler : IRequestHandler<MarkClaimUnderReviewC
             throw new Exception($"Claim with ID {command.ClaimId} not found.");
 
         claim.MarkUnderReview();
+
+        await _repo.AddStatusHistoryAsync(
+            new ClaimStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ClaimId = claim.Id,
+                Status = ClaimStatus.UnderReview,
+                OccurredAt = DateTime.UtcNow
+            });
 
         await _unitOfWork.CommitAsync(cancellationToken);
 

@@ -17,6 +17,7 @@ public class ClaimConfiguration : IEntityTypeConfiguration<Claim>
             .IsRequired();
 
         builder.Property(c => c.Status)
+            .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
     }
