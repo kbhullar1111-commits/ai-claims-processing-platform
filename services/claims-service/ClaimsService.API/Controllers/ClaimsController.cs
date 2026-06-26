@@ -67,4 +67,19 @@ public class ClaimsController : ControllerBase
         }
         return Ok(claim);
     }
+
+    [HttpGet("{claimId:guid}/history")]
+    public async Task<IActionResult> GetClaimHistory(Guid claimId)
+    {
+        var history = await _mediator.Send(
+            new GetClaimHistoryQuery(claimId));
+
+        if (history == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(history);
+    }
+
 }

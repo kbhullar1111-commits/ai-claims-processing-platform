@@ -4,9 +4,9 @@
 
 @documentApi = {{gatewayHost}}/api/documents
 
-@token = 333333333333333333333333333333333333333333
+@token = 3333333333333333333333333333333333333
 
-@claimId=8a420d43-7d29-4ac8-af6e-04036b4ec056
+@claimId=24e93765-9682-464d-84d7-055fbeb055a7
 //@claimId = {{submitClaim.response.body.$.claimId}}
 
 ### Outbox verification flow
@@ -47,6 +47,14 @@ Authorization: Bearer {{token}}
 ### Get Claim Details
 
 GET {{claimsApi}}/{{claimId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Get Claim History
+
+GET {{claimsApi}}/{{claimId}}/history
 Accept: application/json
 Authorization: Bearer {{token}}
 
