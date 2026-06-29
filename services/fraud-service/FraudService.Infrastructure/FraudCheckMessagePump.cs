@@ -1,0 +1,183 @@
+using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using FraudService.Application;
+
+namespace FraudService.Infrastructure;
+
+public sealed class FraudCheckMessagePump(
+    ServiceBusClient busClient,
+    FraudCheckMessagingOptions options,
+    IFraudCheckProcessor fraudCheckProcessor,
+    FraudCheckPublisher publisher,
+    ILogger<FraudCheckMessagePump> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        logger.LogInformation(
+            "Starting fraud check message pump. Queue={Queue}, FraudCheckCompletedTopic={Topic}, MaxConcurrentCalls={MaxConcurrentCalls}",
+            options.FraudServiceQueue,
+            options.FraudCheckCompletedTopic,
+            options.MaxConcurrentCalls);
+
+        var processor = busClient.CreateProcessor(options.FraudServiceQueue, new ServiceBusProcessorOptions
+        {
+            AutoCompleteMessages = false,
+            MaxConcurrentCalls = options.MaxConcurrentCalls,
+            PrefetchCount = options.PrefetchCount,
+            MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(options.MaxAutoLockRenewalMinutes)
+        });
+
+        processor.ProcessErrorAsync += args =>
+        {
+            logger.LogError(
+                args.Exception,
+                "Service Bus processor error. Entity={EntityPath}, ErrorSource={ErrorSource}",
+                args.EntityPath,
+                args.ErrorSource);
+
+            return Task.CompletedTask;
+        };
+
+        processor.ProcessMessageAsync += async args =>
+        {
+            var rawBody = args.Message.Body.ToString();
+
+            if (!MassTransitInterop.TryDeserializeRunFraudCheck(rawBody, out var command, out var correlationId, out var conversationId))
+            {
+                var payloadPreview = rawBody.Length > 300
+                    ? rawBody[..300]
+                    : rawBody;
+
+                logger.LogWarning(
+                    "Skipping unsupported message payload on queue {QueueName}. MessageId={MessageId}, ContentType={ContentType}, Subject={Subject}, PayloadPreview={PayloadPreview}",
+                    options.FraudServiceQueue,
+                    args.Message.MessageId,
+                    args.Message.ContentType,
+                    args.Message.Subject,
+                    payloadPreview);
+
+                await args.DeadLetterMessageAsync(
+                    args.Message,
+                    "UnsupportedPayload",
+                    "Message could not be deserialized as RunFraudCheck or MassTransit envelope.");
+                return;
+            }
+
+            try
+            {
+                var result = await fraudCheckProcessor.ProcessAsync(command, stoppingToken);
+
+                    await ExecuteWithRetryAsync(
+                    ct => publisher.PublishAsync(result, correlationId, conversationId, ct),
+                    options.HandlerRetryMaxAttempts,
+                    options.HandlerRetryBaseDelayMs,
+                    options.HandlerRetryMaxDelaySeconds,
+                    logger,
+                    args.CancellationToken);
+
+                await args.CompleteMessageAsync(args.Message, args.CancellationToken);
+            }
+            catch (Exception ex) when (!args.CancellationToken.IsCancellationRequested)
+            {
+                if (args.Message.DeliveryCount >= options.MaxDeliveryAttemptsBeforeDeadLetter)
+                {
+                    logger.LogError(
+                        ex,
+                        "Moving message to DLQ after delivery attempts exhausted. MessageId={MessageId}, DeliveryCount={DeliveryCount}, Queue={Queue}",
+                        args.Message.MessageId,
+                        args.Message.DeliveryCount,
+                        options.FraudServiceQueue);
+
+                    await args.DeadLetterMessageAsync(
+                        args.Message,
+                        "ProcessingFailed",
+                        $"Fraud check completed publish failed after {args.Message.DeliveryCount} deliveries.");
+                    return;
+                }
+
+                logger.LogWarning(
+                    ex,
+                    "Message processing failed; broker retry will continue. MessageId={MessageId}, DeliveryCount={DeliveryCount}, Queue={Queue}",
+                    args.Message.MessageId,
+                    args.Message.DeliveryCount,
+                    options.FraudServiceQueue);
+
+                throw;
+            }
+        };
+
+        await processor.StartProcessingAsync(stoppingToken);
+
+        try
+        {
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Service is stopping.
+        }
+        finally
+        {
+            await processor.StopProcessingAsync(CancellationToken.None);
+            await processor.DisposeAsync();
+        }
+    }
+
+    private static async Task ExecuteWithRetryAsync(
+        Func<CancellationToken, Task> action,
+        int maxAttempts,
+        int baseDelayMs,
+        int maxDelaySeconds,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var attempt = 0;
+        Exception? lastException = null;
+
+        while (attempt < Math.Max(maxAttempts, 1))
+        {
+            attempt++;
+
+            try
+            {
+                await action(cancellationToken);
+                return;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested && IsTransient(ex))
+            {
+                lastException = ex;
+                if (attempt >= maxAttempts)
+                {
+                    break;
+                }
+
+                var delayMs = Math.Min(
+                    baseDelayMs * (int)Math.Pow(2, attempt - 1),
+                    maxDelaySeconds * 1000);
+
+                logger.LogWarning(
+                    ex,
+                    "Transient publish failure on attempt {Attempt}. Retrying in {DelayMs}ms.",
+                    attempt,
+                    delayMs);
+
+                await Task.Delay(delayMs, cancellationToken);
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("Retry operation failed without captured exception.");
+    }
+
+    private static bool IsTransient(Exception exception)
+    {
+        return exception switch
+        {
+            ServiceBusException sbEx => sbEx.IsTransient,
+            TimeoutException => true,
+            TaskCanceledException => true,
+            OperationCanceledException => false,
+            _ => false
+        };
+    }
+}

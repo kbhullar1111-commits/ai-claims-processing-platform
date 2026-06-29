@@ -1,0 +1,179 @@
+@gatewayHost = https://localhost:7063
+@claimsApi = {{gatewayHost}}/api/claims
+@notificationHost = http://localhost:5002
+
+@documentApi = {{gatewayHost}}/api/documents
+
+@token = 3333333333333333333333333333333333333
+
+@claimId=24e93765-9682-464d-84d7-055fbeb055a7
+//@claimId = {{submitClaim.response.body.$.claimId}}
+
+### Outbox verification flow
+### 1. Run infrastructure/docker/commands/check-outbox.cmd to capture the baseline.
+### 2. Stop RabbitMQ: docker compose -f infrastructure/docker/docker-compose.yml stop rabbitmq
+### 3. Execute one of the requests below.
+### 4. Run infrastructure/docker/commands/check-outbox.cmd again.
+###    Expected: business data is committed and OutboxMessage rows remain queued while RabbitMQ is down.
+### 5. Start RabbitMQ: docker compose -f infrastructure/docker/docker-compose.yml start rabbitmq
+### 6. Run infrastructure/docker/commands/check-outbox.cmd again.
+###    Expected: OutboxMessage rows drain after broker connectivity is restored.
+
+### =====================
+### Claims Service
+### =====================
+
+### Submit claim
+POST {{claimsApi}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
+  "claimAmount": 5000.20
+}
+
+
+
+### Get My Claims
+
+GET {{claimsApi}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Get Claim Details
+
+GET {{claimsApi}}/{{claimId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Get Claim History
+
+GET {{claimsApi}}/{{claimId}}/history
+Accept: application/json
+Authorization: Bearer {{token}}
+
+
+
+### Claims health
+GET {{gatewayHost}}/api/claims/health
+Accept: application/json
+
+### Claims liveness
+GET {{gatewayHost}}/api/claims/live
+Accept: application/json
+
+### Claims readiness
+GET {{gatewayHost}}/api/claims/ready
+Accept: application/json
+
+### Claims metrics (Prometheus)
+GET {{gatewayHost}}/api/claims/metrics
+Accept: text/plain
+
+### Claims Swagger JSON (development)
+GET {{gatewayHost}}/api/claims/swagger/v1/swagger.json
+Accept: application/json
+
+### =====================
+### Document Service
+### =====================
+
+### Generate upload URL - ID Proof
+# @name generateUploadUrlIdProof
+POST {{documentApi}}/upload-url
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "claimId": "{{claimId}}",
+  "documentType": "ID_Proof",
+  "fileName": "id-proof.pdf"
+}
+
+### Upload ID Proof document
+@uploadUrlIdProof = {{generateUploadUrlIdProof.response.body.$.uploadUrl}}
+
+PUT {{uploadUrlIdProof}}
+Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
+
+< ./id-proof.pdf
+
+### Generate upload URL - Accident Photos
+# @name generateUploadUrlAccidentPhotos
+POST {{documentApi}}/upload-url
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "claimId": "{{claimId}}",
+  "documentType": "Accident_Photos",
+  "fileName": "accident-photos.pdf"
+}
+
+### Upload Accident Photos document
+@uploadUrlAccidentPhotos = {{generateUploadUrlAccidentPhotos.response.body.$.uploadUrl}}
+
+PUT {{uploadUrlAccidentPhotos}}
+Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
+
+< ./accident-photos.pdf
+
+### Generate upload URL - Police Report
+# @name generateUploadUrlPoliceReport
+POST {{documentApi}}/upload-url
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "claimId": "{{claimId}}",
+  "documentType": "Police_Report",
+  "fileName": "police-report.pdf"
+}
+
+### Upload Police Report document
+@uploadUrlPoliceReport = {{generateUploadUrlPoliceReport.response.body.$.uploadUrl}}
+
+PUT {{uploadUrlPoliceReport}}
+Content-Type: application/pdf
+x-ms-blob-type: BlockBlob
+
+< ./police-report.pdf
+
+### Document Swagger JSON (development)
+GET {{gatewayHost}}/api/documents/swagger/v1/swagger.json
+Accept: application/json
+
+### =====================
+### Notification Service
+### =====================
+
+### Notification health
+GET {{notificationHost}}/health
+Accept: application/json
+
+### Notification liveness
+GET {{notificationHost}}/live
+Accept: application/json
+
+### Notification readiness
+GET {{notificationHost}}/ready
+Accept: application/json
+
+### Notification metrics (Prometheus)
+GET {{notificationHost}}/metrics
+Accept: text/plain
+
+### Notification Swagger JSON
+GET {{notificationHost}}/swagger/v1/swagger.json
+Accept: application/json

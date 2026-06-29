@@ -1,0 +1,154 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Core Launch (web)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/services/payment-service/PaymentService.API/bin/Debug/net10.0/PaymentService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/payment-service/PaymentService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - ClaimsService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-claims-service",
+      "program": "${workspaceFolder}/services/claims-service/ClaimsService.API/bin/Debug/net10.0/ClaimsService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/claims-service/ClaimsService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - DocumentService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-document-service",
+      "program": "${workspaceFolder}/services/document-service/DocumentService.API/bin/Debug/net6.0/DocumentService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/document-service/DocumentService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - FraudService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-fraud-service",
+      "program": "${workspaceFolder}/services/fraud-service/FraudService.API/bin/Debug/net6.0/FraudService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/fraud-service/FraudService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - NotificationService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-notification-service",
+      "program": "${workspaceFolder}/services/notification-service/NotificationService.API/bin/Debug/net6.0/NotificationService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/notification-service/NotificationService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - PaymentService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-payment-service",
+      "program": "${workspaceFolder}/services/payment-service/PaymentService.API/bin/Debug/net10.0/PaymentService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/payment-service/PaymentService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": ".NET Core Launch - GatewayService.API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-gateway",
+      "program": "${workspaceFolder}/services/gateway-service/GatewayService.API/bin/Debug/net10.0/GatewayService.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/services/gateway-service/GatewayService.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Gateway + Claims",
+      "configurations": [
+        ".NET Core Launch - GatewayService.API",
+        ".NET Core Launch - ClaimsService.API"
+      ]
+    }
+  ]
+}

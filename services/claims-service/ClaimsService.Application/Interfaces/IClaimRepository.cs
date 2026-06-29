@@ -8,5 +8,10 @@ public interface IClaimRepository
 
     Task<Claim?> GetByIdAsync(Guid claimId);
 
-    Task SaveChangesAsync();
+    Task<IReadOnlyList<Claim>> GetByCustomerIdAsync(Guid customerId);
+
+    Task AddStatusHistoryAsync(ClaimStatusHistory history);
+
+    Task<IReadOnlyList<ClaimStatusHistory>> GetStatusHistoryAsync(Guid claimId);
+
 }

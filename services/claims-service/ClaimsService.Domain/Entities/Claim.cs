@@ -18,7 +18,7 @@ public class Claim
 
     private Claim() { } // for ORM
 
-    public Claim(Guid customerId, Guid policyId, decimal claimAmount)
+    private Claim(Guid customerId, Guid policyId, decimal claimAmount)
     {
         if (claimAmount <= 0)
             throw new ArgumentException("Claim amount must be greater than zero");
@@ -69,5 +69,10 @@ public class Claim
             throw new InvalidOperationException("Only paid or rejected claims can be closed");
 
         Status = ClaimStatus.Closed;
+    }
+
+    public static Claim Submit(Guid customerId, Guid policyId, decimal amount)
+    {
+        return new Claim(customerId, policyId, amount);
     }
 }

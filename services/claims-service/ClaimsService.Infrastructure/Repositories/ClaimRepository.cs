@@ -1,0 +1,50 @@
+using ClaimsService.Application.Interfaces;
+using ClaimsService.Domain.Entities;
+using ClaimsService.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace ClaimsService.Infrastructure.Repositories;
+
+public class ClaimRepository : IClaimRepository
+{
+    private readonly ClaimsDbContext _dbContext;
+
+    public ClaimRepository(ClaimsDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task AddAsync(Claim claim)
+    {
+        await _dbContext.Claims.AddAsync(claim);
+    }
+
+    public async Task<Claim?> GetByIdAsync(Guid claimId)
+    {
+        return await _dbContext.Claims
+            .FirstOrDefaultAsync(c => c.Id == claimId);
+    }
+
+    public async Task<IReadOnlyList<Claim>> GetByCustomerIdAsync(Guid customerId)
+    {
+        return await _dbContext.Claims
+            .Where(c => c.CustomerId == customerId)
+            .OrderByDescending(c => c.SubmittedAt)
+            .ToListAsync();
+    }
+
+    public async Task AddStatusHistoryAsync(ClaimStatusHistory history)
+    {
+        await _dbContext.ClaimStatusHistories
+            .AddAsync(history);
+    }
+
+    public async Task<IReadOnlyList<ClaimStatusHistory>> GetStatusHistoryAsync(Guid claimId)
+    {
+        return await _dbContext.ClaimStatusHistories
+            .Where(x => x.ClaimId == claimId)
+            .OrderBy(x => x.OccurredAt)
+            .ToListAsync();
+    }
+
+}

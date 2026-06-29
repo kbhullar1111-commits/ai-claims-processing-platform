@@ -5,5 +5,6 @@ public record ClaimSubmitted(
     Guid CustomerId,
     Guid PolicyId,
     decimal ClaimAmount,
-    DateTime SubmittedAt
+    DateTime SubmittedAt,
+    IEnumerable<string> RequiredDocuments
 );
