@@ -16,7 +16,6 @@ public sealed class YamlManifestProvider : IManifestProvider
     public async Task<RepositoryManifest> LoadAsync(
         CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("Loading deployment manifest...");
 
         var deserializer = new DeserializerBuilder()
             .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)

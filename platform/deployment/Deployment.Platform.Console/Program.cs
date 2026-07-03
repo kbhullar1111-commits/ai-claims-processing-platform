@@ -1,4 +1,5 @@
 using Deployment.Platform.Application.Interfaces;
+using Deployment.Platform.Application.Models;
 using Deployment.Platform.Infrastructure.Manifest;
 
 class Program
@@ -8,11 +9,20 @@ class Program
         Console.WriteLine("Deployment Platform");
         Console.WriteLine("-------------------");
 
+        await PrintManifest();
+
+        Console.WriteLine();
+
+        await PrintGitRepositoryChanges();
+    }
+
+    static async Task PrintManifest()
+    {
         var provider =
             new YamlManifestProvider(
                 "../../../deployment.manifest.yaml");
 
-        Console.WriteLine("Loading manifest...");
+        Console.WriteLine("Loading deployment manifest...");
 
         var manifest = await provider.LoadAsync();
 
@@ -40,4 +50,35 @@ class Program
             }
         }
     }
+
+    static async Task PrintGitRepositoryChanges()
+    {
+        var repositoryOptions = new RepositoryOptions
+        {
+            RepositoryPath = "../../../"
+        };
+
+        var gitChangeProvider =
+            new Deployment.Platform.Infrastructure.Git.GitRepositoryChangeProvider(
+                repositoryOptions);
+
+        Console.WriteLine("Checking for working directory changes...");
+
+        var changeSet = await gitChangeProvider.GetWorkingDirectoryChangesAsync();
+
+        if (changeSet.Files.Count == 0)
+        {
+            Console.WriteLine("No changes detected.");
+        }
+        else
+        {
+            Console.WriteLine("Changes detected:");
+
+            foreach (var change in changeSet.Files)
+            {
+                Console.WriteLine(change.Path);
+            }
+        }
+    }
+
 }
