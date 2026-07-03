@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Deployment.Platform.Application/Deployment.Platform.Application.csproj" />
+    <ProjectReference Include="../Deployment.Platform.Infrastructure/Deployment.Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -82,6 +82,17 @@
       ],
       "problemMatcher": "$msCompile",
       "group": "build"
+    },
+    {
+      "label": "build-deployment-console",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
     }
   ]
 }
