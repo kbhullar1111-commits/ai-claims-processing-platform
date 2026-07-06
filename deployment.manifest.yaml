@@ -6,51 +6,82 @@ repository:
 artifacts:
   - name: gateway-service
     type: gateway
-    project: services/gateway-service/GatewayService.API
+    root: services/gateway-service
+    entryPoint: services/gateway-service/GatewayService.API
     dockerfile: services/gateway-service/GatewayService.API/Dockerfile
 
     dependencies: []
+    ignoredPaths:
+      - GatewayService.API/Properties
+      - GatewayService.API/obj
+      - GatewayService.API/bin
 
   - name: claims-service
     type: api
-    project: services/claims-service/ClaimsService.API
+    root: services/claims-service
+    entryPoint: services/claims-service/ClaimsService.API
     dockerfile: services/claims-service/ClaimsService.API/Dockerfile
 
     dependencies:
       - building-blocks/contracts
+    ignoredPaths:
+      - ClaimsService.API/Properties
+      - ClaimsService.API/obj
+      - ClaimsService.API/bin
 
   - name: document-service
     type: api
-    project: services/document-service/DocumentService.API
+    root: services/document-service
+    entryPoint: services/document-service/DocumentService.API
     dockerfile: services/document-service/DocumentService.API/Dockerfile
 
     dependencies:
       - building-blocks/contracts
+    ignoredPaths:
+      - DocumentService.API/Properties
+      - DocumentService.API/obj
+      - DocumentService.API/bin
 
   - name: notification-service
     type: worker
-    project: services/notification-service/NotificationService.API
+    root: services/notification-service
+    entryPoint: services/notification-service/NotificationService.API
     dockerfile: services/notification-service/NotificationService.API/Dockerfile
 
     dependencies:
       - building-blocks/contracts
+    ignoredPaths:
+      - NotificationService.API/Properties
+      - NotificationService.API/obj
+      - NotificationService.API/bin
 
   - name: fraud-service
     type: worker
-    project: services/fraud-service/FraudService.API
+    root: services/fraud-service
+    entryPoint: services/fraud-service/FraudService.API
     dockerfile: services/fraud-service/FraudService.API/Dockerfile
 
     dependencies:
       - building-blocks/contracts
+    ignoredPaths:
+      - FraudService.API/Properties
+      - FraudService.API/obj
+      - FraudService.API/bin
 
   - name: payment-service
     type: worker
-    project: services/payment-service/PaymentService.API
+    root: services/payment-service
+    entryPoint: services/payment-service/PaymentService.API
     dockerfile: services/payment-service/PaymentService.API/Dockerfile
 
     dependencies:
       - building-blocks/contracts
+    ignoredPaths:
+      - PaymentService.API/Properties
+      - PaymentService.API/obj
+      - PaymentService.API/bin
 
   - name: document-processor
     type: function
-    project: serverless/document-processor-function
+    root: serverless/document-processor-function
+    entryPoint: serverless/document-processor-function

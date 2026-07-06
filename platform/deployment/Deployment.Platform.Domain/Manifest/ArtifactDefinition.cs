@@ -8,9 +8,13 @@ public sealed class ArtifactDefinition
 
     public required ArtifactType Type { get; init; }
 
-    public required string Project { get; init; }
+    public required string Root { get; init; }
+
+    public required string EntryPoint { get; init; }
 
     public string? Dockerfile { get; init; }
 
-    public List<string> Dependencies { get; init; } = [];
+    public ICollection<string> Dependencies { get; init; } = [];
+
+    public ICollection<string> IgnoredPaths { get; init; } = [];
 }
