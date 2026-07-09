@@ -10,7 +10,9 @@ artifacts:
     entryPoint: services/gateway-service/GatewayService.API
     dockerfile: services/gateway-service/GatewayService.API/Dockerfile
 
-    dependencies: []
+    dependencies:
+      - services/claims-service/ClaimsService.API
+      - services/document-service/DocumentService.API
     ignoredPaths:
       - GatewayService.API/Properties
       - GatewayService.API/obj

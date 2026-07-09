@@ -29,7 +29,8 @@ public class DeploymentPlannerTests
         var request = CreateRequest(DeploymentStrategy.Impacted, ["claims-service"], ["claims-service"], null);
 
         var plan = _planner.CreatePlan(request);
-        var executionGraph = _graphBuilder.Build(plan);
+        var repositoryManifest = GetRepositoryManifest();
+        var executionGraph = _graphBuilder.Build(plan, repositoryManifest);
 
         Assert.NotNull(executionGraph);
         Assert.Single(executionGraph.Stages);
@@ -43,7 +44,8 @@ public class DeploymentPlannerTests
         var request = CreateRequest(DeploymentStrategy.Impacted, ["claims-service", "gateway-service"], ["claims-service", "gateway-service"], null);
 
         var plan = _planner.CreatePlan(request);
-        var executionGraph = _graphBuilder.Build(plan);
+        var repositoryManifest = GetRepositoryManifest();
+        var executionGraph = _graphBuilder.Build(plan, repositoryManifest);
 
         Assert.NotNull(executionGraph);
         Assert.Single(executionGraph.Stages);
@@ -59,7 +61,9 @@ public class DeploymentPlannerTests
 
         var plan = _planner.CreatePlan(request);
 
-        Assert.Throws<ArgumentException>(() => _graphBuilder.Build(plan));
+        var repositoryManifest = GetRepositoryManifest();
+
+        Assert.Throws<ArgumentException>(() => _graphBuilder.Build(plan, repositoryManifest));
     }
 
     private static DeploymentPlanRequest CreateRequest(DeploymentStrategy strategy, string[] artifactNames, ICollection<string>? impactedArtifactNames, ICollection<string>? selectedArtifacts)
@@ -95,6 +99,30 @@ public class DeploymentPlannerTests
             Type = ArtifactType.Api,
             Root = $"/src/{name}",
             EntryPoint = "Program.cs"
+        };
+    }
+
+    private static RepositoryManifest GetRepositoryManifest()
+    {
+        IEnumerable<string> artifactNames = new List<string>
+        {
+            "claims-service",
+            "gateway-service",
+            "document-service",
+            "notification-service",
+            "fraud-service",
+            "payment-service",
+            "document-processor"
+        };
+        var artifacts = artifactNames.Select(name => CreateArtifact(name)).ToList();
+
+        return new RepositoryManifest
+        {
+            Repository = new RepositoryInfo
+            {
+                Name = "my-repo"
+            },
+            Artifacts = artifacts
         };
     }
 }

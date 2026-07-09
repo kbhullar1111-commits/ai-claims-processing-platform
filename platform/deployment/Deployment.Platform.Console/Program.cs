@@ -25,6 +25,8 @@ var host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<IDeploymentPlanner, DeploymentPlanner>();
 
+        services.AddSingleton<IExecutionGraphBuilder, ExecutionGraphBuilder>();
+
         services.AddSingleton<App>();
     })
     .Build();

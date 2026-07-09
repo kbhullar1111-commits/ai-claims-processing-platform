@@ -4,6 +4,7 @@ using Deployment.Platform.Domain.Changes;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Planning;
+using Deployment.Platform.Domain.Execution;
 
 public sealed class App
 {
@@ -11,16 +12,20 @@ public sealed class App
     private readonly IRepositoryChangeProvider _repositoryChangeProvider;
     private readonly IImpactAnalyzer _impactAnalyzer;
     private readonly IDeploymentPlanner _deploymentPlanner;
+    private readonly IExecutionGraphBuilder _graphBuilder;
+
     public App(
         IManifestProvider manifestProvider,
         IRepositoryChangeProvider repositoryChangeProvider,
         IImpactAnalyzer impactAnalyzer,
-        IDeploymentPlanner deploymentPlanner)
+        IDeploymentPlanner deploymentPlanner,
+        IExecutionGraphBuilder graphBuilder)
     {
         _manifestProvider = manifestProvider;
         _repositoryChangeProvider = repositoryChangeProvider;
         _impactAnalyzer = impactAnalyzer;
         _deploymentPlanner = deploymentPlanner;
+        _graphBuilder = graphBuilder;
     }
 
     public async Task RunAsync()
@@ -48,18 +53,30 @@ public sealed class App
         Console.WriteLine();
         Console.WriteLine("Generating deployment plan based on impacted artifacts...");
         DeploymentPlan impactedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Impacted, impactResult);
-        ConsolePrinter.PrintDeploymentPlan(impactedPlan);
+        //ConsolePrinter.PrintDeploymentPlan(impactedPlan);
+        Console.WriteLine();
+        Console.WriteLine("Building execution graph for impacted deployment plan...");
+        ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
+        ConsolePrinter.PrintExecutionGraph(executionGraph);
 
         Console.WriteLine();
         Console.WriteLine("Generating deployment plan based on selected artifacts...");
         List<string> selectedArtifacts = new List<string> { "claims-service", "gateway-service" };
         DeploymentPlan selectedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Selected, null, selectedArtifacts);
-        ConsolePrinter.PrintDeploymentPlan(selectedPlan);
+        //ConsolePrinter.PrintDeploymentPlan(selectedPlan);
+        Console.WriteLine();
+        Console.WriteLine("Building execution graph for selected deployment plan...");
+        ExecutionGraph selectedExecutionGraph = CreateExecutionGraph(selectedPlan, manifest);
+        ConsolePrinter.PrintExecutionGraph(selectedExecutionGraph);
 
         Console.WriteLine();
         Console.WriteLine("Generating deployment plan for all artifacts...");
         DeploymentPlan fullPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Full, null, null);
-        ConsolePrinter.PrintDeploymentPlan(fullPlan);
+        //ConsolePrinter.PrintDeploymentPlan(fullPlan);
+        Console.WriteLine();
+        Console.WriteLine("Building execution graph for full deployment plan...");
+        ExecutionGraph fullExecutionGraph = CreateExecutionGraph(fullPlan, manifest);
+        ConsolePrinter.PrintExecutionGraph(fullExecutionGraph);
     }
 
     private Task<RepositoryManifest> GetManifestAsync()
@@ -93,6 +110,11 @@ public sealed class App
         };
 
         return _deploymentPlanner.CreatePlan(request);
+    }
+
+    private ExecutionGraph CreateExecutionGraph(DeploymentPlan plan, RepositoryManifest manifest)
+    {
+        return _graphBuilder.Build(plan, manifest);
     }
 
 }

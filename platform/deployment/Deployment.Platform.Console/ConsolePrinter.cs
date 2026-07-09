@@ -1,7 +1,8 @@
-using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Manifest;
-using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Changes;
+using Deployment.Platform.Domain.Impact;
+using Deployment.Platform.Domain.Planning;
+using Deployment.Platform.Domain.Execution;
 static class ConsolePrinter
 {
     internal static void PrintManifest(RepositoryManifest manifest)
@@ -78,4 +79,25 @@ static class ConsolePrinter
             Console.WriteLine();
         }
     }
+
+    internal static void PrintExecutionGraph(ExecutionGraph executionGraph)
+    {
+        Console.WriteLine("Execution Graph:");
+
+        foreach (var stage in executionGraph.Stages)
+        {
+            Console.WriteLine($"Stage Order: {stage.Order}");
+
+            foreach (var artifact in stage.Artifacts)
+            {
+                Console.WriteLine($"  Artifact: {artifact.Artifact.Name}");
+                Console.WriteLine($"  Type: {artifact.Artifact.Type}");
+                Console.WriteLine($"  Root: {artifact.Artifact.Root}");
+                Console.WriteLine($"  Entry Point: {artifact.Artifact.EntryPoint}");
+                Console.WriteLine($"  Dockerfile: {artifact.Artifact.Dockerfile ?? "N/A"}");
+                Console.WriteLine();
+            }
+        }
+    }
+
 }
