@@ -1,5 +1,6 @@
 using Deployment.Platform.Application.Interfaces;
 using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Utilities;
 using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Execution;
 using Deployment.Platform.Domain.Manifest;
@@ -121,15 +122,33 @@ public sealed class ExecutionGraphBuilder : IExecutionGraphBuilder
         string dependency,
         RepositoryManifest manifest)
     {
+        if (string.IsNullOrWhiteSpace(dependency))
+        {
+            return null;
+        }
+
+        var normalizedDependency = PathNormalizer.NormalizePath(dependency);
+
         return manifest.Artifacts
             .Where(a =>
-                dependency.Equals(
-                    a.Root,
-                    StringComparison.OrdinalIgnoreCase) ||
-                dependency.StartsWith(
-                    a.Root + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(a => a.Root.Length)
+            {
+                var normalizedRoot = PathNormalizer.NormalizePath(a.Root);
+
+                if (string.IsNullOrEmpty(normalizedRoot))
+                {
+                    return false;
+                }
+
+                if (string.Equals(normalizedDependency, normalizedRoot, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                // check for dependency under the artifact root (root + separator)
+                var rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
+                return normalizedDependency.StartsWith(rootWithSep, StringComparison.Ordinal);
+            })
+            .OrderByDescending(a => a.Root?.Length ?? 0)
             .FirstOrDefault();
     }
 

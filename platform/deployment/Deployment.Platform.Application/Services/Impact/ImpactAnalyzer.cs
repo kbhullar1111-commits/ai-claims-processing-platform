@@ -1,4 +1,5 @@
 using Deployment.Platform.Application.Interfaces;
+using Deployment.Platform.Application.Utilities;
 using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Changes;
@@ -15,19 +16,19 @@ public class ImpactAnalyzer : IImpactAnalyzer
 
         foreach (var artifact in manifest.Artifacts)
         {
-            var artifactRoot = NormalizePath(artifact.Root);
+            var artifactRoot = PathNormalizer.NormalizePath(artifact.Root);
             var ignoredPaths = artifact.IgnoredPaths
-                .Select(ignoredPath => NormalizePath(Path.Combine(artifact.Root, ignoredPath)))
+                .Select(ignoredPath => PathNormalizer.NormalizePath(Path.Combine(artifact.Root, ignoredPath)))
                 .ToList();
 
             var dependencyPaths = artifact.Dependencies
-                .Select(NormalizePath)
+                .Select(PathNormalizer.NormalizePath)
                 .ToList();
 
             var changedFileImpacts = changeSet.Files
                 .Select(file =>
                 {
-                    var normalizedFilePath = NormalizePath(file.Path);
+                    var normalizedFilePath = PathNormalizer.NormalizePath(file.Path);
 
                     if (IsIgnored(normalizedFilePath, ignoredPaths))
                     {
@@ -87,18 +88,6 @@ public class ImpactAnalyzer : IImpactAnalyzer
         return dependencies.Any(dependencyPath => filePath.StartsWith(dependencyPath, StringComparison.OrdinalIgnoreCase))
             ? ImpactType.Dependency
             : null;
-    }
-
-    private static string NormalizePath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return string.Empty;
-        }
-
-        return path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .ToLowerInvariant();
     }
 
     private sealed record ChangedFileImpact(ChangedFile ChangedFile, ImpactType Impact);

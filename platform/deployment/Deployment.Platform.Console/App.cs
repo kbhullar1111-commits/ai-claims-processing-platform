@@ -59,24 +59,24 @@ public sealed class App
         ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
         ConsolePrinter.PrintExecutionGraph(executionGraph);
 
-        Console.WriteLine();
-        Console.WriteLine("Generating deployment plan based on selected artifacts...");
-        List<string> selectedArtifacts = new List<string> { "claims-service", "gateway-service" };
-        DeploymentPlan selectedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Selected, null, selectedArtifacts);
-        //ConsolePrinter.PrintDeploymentPlan(selectedPlan);
-        Console.WriteLine();
-        Console.WriteLine("Building execution graph for selected deployment plan...");
-        ExecutionGraph selectedExecutionGraph = CreateExecutionGraph(selectedPlan, manifest);
-        ConsolePrinter.PrintExecutionGraph(selectedExecutionGraph);
+        // Console.WriteLine();
+        // Console.WriteLine("Generating deployment plan based on selected artifacts...");
+        // List<string> selectedArtifacts = new List<string> { "claims-service", "gateway-service" };
+        // DeploymentPlan selectedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Selected, null, selectedArtifacts);
+        // //ConsolePrinter.PrintDeploymentPlan(selectedPlan);
+        // Console.WriteLine();
+        // Console.WriteLine("Building execution graph for selected deployment plan...");
+        // ExecutionGraph selectedExecutionGraph = CreateExecutionGraph(selectedPlan, manifest);
+        // ConsolePrinter.PrintExecutionGraph(selectedExecutionGraph);
 
-        Console.WriteLine();
-        Console.WriteLine("Generating deployment plan for all artifacts...");
-        DeploymentPlan fullPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Full, null, null);
-        //ConsolePrinter.PrintDeploymentPlan(fullPlan);
-        Console.WriteLine();
-        Console.WriteLine("Building execution graph for full deployment plan...");
-        ExecutionGraph fullExecutionGraph = CreateExecutionGraph(fullPlan, manifest);
-        ConsolePrinter.PrintExecutionGraph(fullExecutionGraph);
+        // Console.WriteLine();
+        // Console.WriteLine("Generating deployment plan for all artifacts...");
+        // DeploymentPlan fullPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Full, null, null);
+        // //ConsolePrinter.PrintDeploymentPlan(fullPlan);
+        // Console.WriteLine();
+        // Console.WriteLine("Building execution graph for full deployment plan...");
+        // ExecutionGraph fullExecutionGraph = CreateExecutionGraph(fullPlan, manifest);
+        // ConsolePrinter.PrintExecutionGraph(fullExecutionGraph);
     }
 
     private Task<RepositoryManifest> GetManifestAsync()
