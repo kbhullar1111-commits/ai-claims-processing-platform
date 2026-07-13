@@ -1,8 +1,17 @@
-using Deployment.Platform.Application.Interfaces;
-using Deployment.Platform.Application.Services;
+using Deployment.Platform.Application.Interfaces.Manifest;
+using Deployment.Platform.Application.Interfaces.Changes;
+using Deployment.Platform.Application.Interfaces.Impact;
+using Deployment.Platform.Application.Interfaces.Planning;
+using Deployment.Platform.Application.Interfaces.Execution;
+using Deployment.Platform.Application.Interfaces.Process;
+using Deployment.Platform.Application.Services.Impact;
+using Deployment.Platform.Application.Services.Planning;
+using Deployment.Platform.Application.Services.Execution;
 using Deployment.Platform.Application.Models;
 using Deployment.Platform.Infrastructure.Git;
 using Deployment.Platform.Infrastructure.Manifest;
+using Deployment.Platform.Infrastructure.Execution;
+using Deployment.Platform.Infrastructure.Processes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -26,6 +35,14 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IDeploymentPlanner, DeploymentPlanner>();
 
         services.AddSingleton<IExecutionGraphBuilder, ExecutionGraphBuilder>();
+
+        services.AddSingleton<IArtifactExecutor, SimulatedArtifactExecutor>(); 
+
+        services.AddSingleton<IStageExecutor, StageExecutor>();
+
+        services.AddSingleton<IDeploymentExecutor, DeploymentExecutor>();
+
+        services.AddSingleton<IProcessRunner, ProcessRunner>();
 
         services.AddSingleton<App>();
     })
