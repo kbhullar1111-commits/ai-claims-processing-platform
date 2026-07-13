@@ -1,11 +1,11 @@
 
-using Deployment.Platform.Application.Interfaces;
-using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Interfaces.Planning;
+using Deployment.Platform.Application.Models.Planning;
 using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Manifest;
 
-namespace Deployment.Platform.Application.Services;
+namespace Deployment.Platform.Application.Services.Planning;
 
 public sealed class DeploymentPlanner : IDeploymentPlanner
 {

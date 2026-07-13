@@ -1,11 +1,11 @@
-using Deployment.Platform.Application.Interfaces;
-using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Interfaces.Execution;
+using Deployment.Platform.Application.Models.Execution;
 using Deployment.Platform.Application.Utilities;
 using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Execution;
 using Deployment.Platform.Domain.Manifest;
 
-namespace Deployment.Platform.Application.Services;
+namespace Deployment.Platform.Application.Services.Execution;
 
 public sealed class ExecutionGraphBuilder : IExecutionGraphBuilder
 {

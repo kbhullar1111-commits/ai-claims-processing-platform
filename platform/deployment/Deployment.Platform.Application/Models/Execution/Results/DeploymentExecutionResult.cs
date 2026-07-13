@@ -1,4 +1,4 @@
-namespace Deployment.Platform.Application.Models;
+namespace Deployment.Platform.Application.Models.Execution;
 
 public sealed class DeploymentExecutionResult
 {
@@ -10,6 +10,8 @@ public sealed class DeploymentExecutionResult
 
 public sealed  class StageExecutionResult
 {
+    public required DateTime StartedAt { get; init;}
+    public required DateTime CompletedAt { get; init;}
     public required int StageOrder { get; init;}
     public bool Successful { get; init;}
     public required IReadOnlyList<ArtifactExecutionResult> ArtifactResults { get; init;}

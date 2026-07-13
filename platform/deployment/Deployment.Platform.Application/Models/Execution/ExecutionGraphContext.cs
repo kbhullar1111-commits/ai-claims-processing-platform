@@ -1,6 +1,6 @@
 using Deployment.Platform.Domain.Manifest;
 
-namespace Deployment.Platform.Application.Models;
+namespace Deployment.Platform.Application.Models.Execution;
 
 internal sealed class ExecutionGraphContext
 {

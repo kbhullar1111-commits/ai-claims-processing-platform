@@ -1,5 +1,10 @@
-using Deployment.Platform.Application.Interfaces;
-using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Interfaces.Manifest;
+using Deployment.Platform.Application.Interfaces.Changes;
+using Deployment.Platform.Application.Interfaces.Impact;
+using Deployment.Platform.Application.Interfaces.Planning;
+using Deployment.Platform.Application.Interfaces.Execution;
+using Deployment.Platform.Application.Models.Planning;
+using Deployment.Platform.Application.Models.Execution;
 using Deployment.Platform.Domain.Changes;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Manifest;
@@ -13,19 +18,22 @@ public sealed class App
     private readonly IImpactAnalyzer _impactAnalyzer;
     private readonly IDeploymentPlanner _deploymentPlanner;
     private readonly IExecutionGraphBuilder _graphBuilder;
+    private readonly IDeploymentExecutor _deploymentExecutor;
 
     public App(
         IManifestProvider manifestProvider,
         IRepositoryChangeProvider repositoryChangeProvider,
         IImpactAnalyzer impactAnalyzer,
         IDeploymentPlanner deploymentPlanner,
-        IExecutionGraphBuilder graphBuilder)
+        IExecutionGraphBuilder graphBuilder,
+        IDeploymentExecutor deploymentExecutor)
     {
         _manifestProvider = manifestProvider;
         _repositoryChangeProvider = repositoryChangeProvider;
         _impactAnalyzer = impactAnalyzer;
         _deploymentPlanner = deploymentPlanner;
         _graphBuilder = graphBuilder;
+        _deploymentExecutor = deploymentExecutor;
     }
 
     public async Task RunAsync()
@@ -57,7 +65,17 @@ public sealed class App
         Console.WriteLine();
         Console.WriteLine("Building execution graph for impacted deployment plan...");
         ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
-        ConsolePrinter.PrintExecutionGraph(executionGraph);
+        var deploymentExecutionRequest = new DeploymentExecutionRequest
+        {
+            Environment = "Dev",
+            ExecutionGraph = executionGraph,
+            DryRun = true,
+            AutoApprove = false
+        };
+        var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
+        //ConsolePrinter.PrintExecutionGraph(executionGraph);
+        Console.WriteLine("Executing the deployment plan...");
+        ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
 
         // Console.WriteLine();
         // Console.WriteLine("Generating deployment plan based on selected artifacts...");

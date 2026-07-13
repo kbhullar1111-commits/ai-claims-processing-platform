@@ -1,6 +1,6 @@
 using Deployment.Platform.Domain.Execution;
 
-namespace Deployment.Platform.Application.Models;
+namespace Deployment.Platform.Application.Models.Execution;
 
 public sealed class DeploymentExecutionRequest
 {

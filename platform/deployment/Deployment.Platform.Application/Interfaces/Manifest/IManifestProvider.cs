@@ -1,6 +1,6 @@
-namespace Deployment.Platform.Application.Interfaces;
-
 using Deployment.Platform.Domain.Manifest;
+
+namespace Deployment.Platform.Application.Interfaces.Manifest;
 
 public interface IManifestProvider
 {

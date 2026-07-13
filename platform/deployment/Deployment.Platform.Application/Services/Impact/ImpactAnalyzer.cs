@@ -1,10 +1,10 @@
-using Deployment.Platform.Application.Interfaces;
+using Deployment.Platform.Application.Interfaces.Impact;
 using Deployment.Platform.Application.Utilities;
 using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Changes;
 
-namespace Deployment.Platform.Application.Services;
+namespace Deployment.Platform.Application.Services.Impact;
 
 public class ImpactAnalyzer : IImpactAnalyzer
 {

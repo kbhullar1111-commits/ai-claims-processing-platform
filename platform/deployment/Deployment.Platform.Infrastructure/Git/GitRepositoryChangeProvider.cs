@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using Deployment.Platform.Domain.Changes;
-using Deployment.Platform.Application.Interfaces;
+using Deployment.Platform.Application.Interfaces.Changes;
 using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Interfaces.Process;
 
 
 namespace Deployment.Platform.Infrastructure.Git;
@@ -12,8 +13,11 @@ public sealed class GitRepositoryChangeProvider
     private readonly string _repositoryPath;
     private const string _workingDirectoryCommand = "status --porcelain";
 
+    private readonly IProcessRunner _processRunner;
+
     public GitRepositoryChangeProvider(
-        RepositoryOptions repositoryOptions)
+        RepositoryOptions repositoryOptions,
+        IProcessRunner processRunner)
     {
         ArgumentNullException.ThrowIfNull(repositoryOptions);
 
@@ -27,45 +31,27 @@ public sealed class GitRepositoryChangeProvider
             throw new DirectoryNotFoundException(
                 $"The specified repository path '{_repositoryPath}' does not exist.");
         }
+
+        _processRunner = processRunner;
     }
 
     public async Task<ChangeSet> GetWorkingDirectoryChangesAsync(CancellationToken cancellationToken = default)
     {
 
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = "git",
-            Arguments = _workingDirectoryCommand,
+        var processResult = await _processRunner.ExecuteAsync(
+            "git",
+            _workingDirectoryCommand,
+            _repositoryPath,
+            cancellationToken
+        );
 
-            WorkingDirectory = _repositoryPath,
-
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-
-            UseShellExecute = false,
-
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(processStartInfo);
-
-        if (process is null)
-        {
-            throw new InvalidOperationException("Failed to start git process.");
-        }
-
-        string output = await process.StandardOutput.ReadToEndAsync();
-        string error = await process.StandardError.ReadToEndAsync();
-
-        await process.WaitForExitAsync(cancellationToken);
-
-        if (process.ExitCode != 0)
+        if (!processResult.Successful)
         {
             throw new InvalidOperationException(
-                $"Git command failed with exit code {process.ExitCode}: {error}");
+                $"Git command failed with exit code {processResult.ExitCode}: {processResult.StandardError}");
         }
 
-        var changeSet = ParseWorkingDirectoryChanges(output);
+        var changeSet = ParseWorkingDirectoryChanges(processResult.StandardOutput);
 
         return changeSet;
     }

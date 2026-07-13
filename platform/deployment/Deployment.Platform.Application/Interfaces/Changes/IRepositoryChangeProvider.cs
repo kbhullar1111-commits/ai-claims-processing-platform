@@ -1,6 +1,6 @@
 using Deployment.Platform.Domain.Changes;
 
-namespace Deployment.Platform.Application.Interfaces;
+namespace Deployment.Platform.Application.Interfaces.Changes;
 
 public interface IRepositoryChangeProvider
 {

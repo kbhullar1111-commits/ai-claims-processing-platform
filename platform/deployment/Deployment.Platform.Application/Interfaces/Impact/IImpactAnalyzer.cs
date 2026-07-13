@@ -2,7 +2,7 @@ using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Changes;
 
-namespace Deployment.Platform.Application.Interfaces;
+namespace Deployment.Platform.Application.Interfaces.Impact;
 
 public interface IImpactAnalyzer
 {

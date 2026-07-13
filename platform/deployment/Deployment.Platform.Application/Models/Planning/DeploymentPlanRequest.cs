@@ -2,7 +2,7 @@ using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Planning;
 
-namespace Deployment.Platform.Application.Models;
+namespace Deployment.Platform.Application.Models.Planning;
 
 public sealed class DeploymentPlanRequest
 {

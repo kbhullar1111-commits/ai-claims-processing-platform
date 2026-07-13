@@ -1,6 +1,6 @@
-using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Models.Execution;
 
-namespace Deployment.Platform.Application.Interfaces;
+namespace Deployment.Platform.Application.Interfaces.Execution;
 
 public interface IDeploymentExecutor
 {

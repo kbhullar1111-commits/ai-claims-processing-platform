@@ -3,6 +3,7 @@ using Deployment.Platform.Domain.Changes;
 using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Execution;
+using Deployment.Platform.Application.Models.Execution;
 static class ConsolePrinter
 {
     internal static void PrintManifest(RepositoryManifest manifest)
@@ -97,6 +98,41 @@ static class ConsolePrinter
                 Console.WriteLine($"  Dockerfile: {artifact.Artifact.Dockerfile ?? "N/A"}");
                 Console.WriteLine();
             }
+        }
+    }
+
+    internal static void PrintDeploymentExecutionResult(DeploymentExecutionResult executionResult)
+    {
+        var totalDuration = executionResult.CompletedAt - executionResult.StartedAt;
+        var status = executionResult.Successful ? "SUCCESS" : "FAILED";
+
+        Console.WriteLine($"Deployment Execution Result: {status}");
+        Console.WriteLine($"Started At: {executionResult.StartedAt:yyyy-MM-dd HH:mm:ss}");
+        Console.WriteLine($"Completed At: {executionResult.CompletedAt:yyyy-MM-dd HH:mm:ss}");
+        Console.WriteLine($"Total Duration: {totalDuration.TotalSeconds:F2} seconds");
+        Console.WriteLine();
+
+        foreach (var stageResult in executionResult.StageResults)
+        {
+            var stageStatus = stageResult.Successful ? "SUCCESS" : "FAILED";
+            var stageDuration = stageResult.CompletedAt - stageResult.StartedAt;
+
+            Console.WriteLine($"Stage {stageResult.StageOrder}: {stageStatus}");
+            Console.WriteLine($"  Duration: {stageDuration.TotalSeconds:F2} seconds");
+
+            foreach (var artifactResult in stageResult.ArtifactResults)
+            {
+                var artifactStatus = artifactResult.Successful ? "✓" : "✗";
+                Console.WriteLine($"    {artifactStatus} {artifactResult.ArtifactName}");
+                Console.WriteLine($"      Duration: {artifactResult.Duration.TotalSeconds:F2} seconds");
+
+                if (!string.IsNullOrEmpty(artifactResult.ErrorMessage))
+                {
+                    Console.WriteLine($"      Error: {artifactResult.ErrorMessage}");
+                }
+            }
+
+            Console.WriteLine();
         }
     }
 

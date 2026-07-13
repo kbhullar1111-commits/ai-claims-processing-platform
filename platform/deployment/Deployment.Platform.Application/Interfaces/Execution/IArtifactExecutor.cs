@@ -1,7 +1,7 @@
-using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Models.Execution;
 using Deployment.Platform.Domain.Execution;
 
-namespace Deployment.Platform.Application.Interfaces;
+namespace Deployment.Platform.Application.Interfaces.Execution;
 
 public interface IArtifactExecutor
 {

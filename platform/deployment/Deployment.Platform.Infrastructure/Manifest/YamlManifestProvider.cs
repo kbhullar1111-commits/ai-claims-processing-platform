@@ -1,8 +1,8 @@
-namespace Deployment.Platform.Infrastructure.Manifest;
-
-using Deployment.Platform.Application.Interfaces;
+using Deployment.Platform.Application.Interfaces.Manifest;
 using Deployment.Platform.Domain.Manifest;
 using YamlDotNet.Serialization;
+
+namespace Deployment.Platform.Infrastructure.Manifest;
 
 public sealed class YamlManifestProvider : IManifestProvider
 {
