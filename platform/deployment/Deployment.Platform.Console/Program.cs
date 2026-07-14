@@ -12,6 +12,7 @@ using Deployment.Platform.Infrastructure.Git;
 using Deployment.Platform.Infrastructure.Manifest;
 using Deployment.Platform.Infrastructure.Execution;
 using Deployment.Platform.Infrastructure.Processes;
+using Deployment.Platform.Infrastructure.Docker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -36,13 +37,15 @@ var host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<IExecutionGraphBuilder, ExecutionGraphBuilder>();
 
-        services.AddSingleton<IArtifactExecutor, SimulatedArtifactExecutor>(); 
+        services.AddSingleton<IArtifactExecutor, ACAArtifactExecutor>(); 
 
         services.AddSingleton<IStageExecutor, StageExecutor>();
 
         services.AddSingleton<IDeploymentExecutor, DeploymentExecutor>();
 
         services.AddSingleton<IProcessRunner, ProcessRunner>();
+        
+        services.AddSingleton<DockerClient>();
 
         services.AddSingleton<App>();
     })

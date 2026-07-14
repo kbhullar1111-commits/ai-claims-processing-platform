@@ -103,28 +103,27 @@ static class ConsolePrinter
 
     internal static void PrintDeploymentExecutionResult(DeploymentExecutionResult executionResult)
     {
-        var totalDuration = executionResult.CompletedAt - executionResult.StartedAt;
         var status = executionResult.Successful ? "SUCCESS" : "FAILED";
 
         Console.WriteLine($"Deployment Execution Result: {status}");
         Console.WriteLine($"Started At: {executionResult.StartedAt:yyyy-MM-dd HH:mm:ss}");
         Console.WriteLine($"Completed At: {executionResult.CompletedAt:yyyy-MM-dd HH:mm:ss}");
-        Console.WriteLine($"Total Duration: {totalDuration.TotalSeconds:F2} seconds");
         Console.WriteLine();
 
         foreach (var stageResult in executionResult.StageResults)
         {
             var stageStatus = stageResult.Successful ? "SUCCESS" : "FAILED";
-            var stageDuration = stageResult.CompletedAt - stageResult.StartedAt;
 
             Console.WriteLine($"Stage {stageResult.StageOrder}: {stageStatus}");
-            Console.WriteLine($"  Duration: {stageDuration.TotalSeconds:F2} seconds");
+            Console.WriteLine($"Stage Started At: {stageResult.StartedAt:yyyy-MM-dd HH:mm:ss}");
+            Console.WriteLine($"Stage Completed At: {stageResult.CompletedAt:yyyy-MM-dd HH:mm:ss}");
 
             foreach (var artifactResult in stageResult.ArtifactResults)
-            {
+           {
                 var artifactStatus = artifactResult.Successful ? "✓" : "✗";
                 Console.WriteLine($"    {artifactStatus} {artifactResult.ArtifactName}");
-                Console.WriteLine($"      Duration: {artifactResult.Duration.TotalSeconds:F2} seconds");
+                Console.WriteLine($"Artifact Started At: {artifactResult.StartedAt:yyyy-MM-dd HH:mm:ss}");
+                Console.WriteLine($"Artifact Completed At: {artifactResult.CompletedAt:yyyy-MM-dd HH:mm:ss}");
 
                 if (!string.IsNullOrEmpty(artifactResult.ErrorMessage))
                 {

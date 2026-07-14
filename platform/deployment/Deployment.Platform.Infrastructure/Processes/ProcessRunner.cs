@@ -42,8 +42,6 @@ public sealed class ProcessRunner : IProcessRunner
 
         await Task.WhenAll(outputTask, errorTask);
 
-        await process.WaitForExitAsync(cancellationToken);
-
         var processResult = new ProcessResult
         {
             FileName = fileName,

@@ -18,10 +18,17 @@ public sealed class DeploymentExecutor : IDeploymentExecutor
         var startedAt = DateTime.UtcNow;
 
         var stageResults  = new List<StageExecutionResult>();   
+
+        var deploymentEnvironment = request.DeploymentEnvironment;
+
         foreach(var stage in request.ExecutionGraph.Stages)
         {
           cancellationToken.ThrowIfCancellationRequested();
-          var stageResult =   await _stageExecutor.ExecuteAsync(stage, cancellationToken);
+          var stageResult =   await _stageExecutor.ExecuteAsync(
+            stage,
+            deploymentEnvironment,
+            cancellationToken);
+
           stageResults .Add(stageResult);
             if (!stageResult.Successful)
             {

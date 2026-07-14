@@ -14,6 +14,7 @@ public sealed class StageExecutor : IStageExecutor
     }
     public async  Task<StageExecutionResult> ExecuteAsync(
         ExecutionStage stage,
+        DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default)
     {
         var startedAt = DateTime.UtcNow;
@@ -22,7 +23,7 @@ public sealed class StageExecutor : IStageExecutor
         foreach(var artifact in stage.Artifacts)
         {
           cancellationToken.ThrowIfCancellationRequested();
-          var artifactResult =   await _artifactExecutor.ExecuteAsync(artifact, cancellationToken);
+          var artifactResult =   await _artifactExecutor.ExecuteAsync(artifact, deploymentEnvironment, cancellationToken);
           artifactResults.Add(artifactResult);
           if (!artifactResult.Successful)
           {

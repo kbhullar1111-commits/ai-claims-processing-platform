@@ -6,7 +6,7 @@ public sealed class DeploymentExecutionRequest
 {
     public required ExecutionGraph ExecutionGraph { get; init;}
 
-    public required string Environment { get; init;}
+    public required DeploymentEnvironment DeploymentEnvironment { get; init;}
 
     public bool DryRun { get; init; }
 

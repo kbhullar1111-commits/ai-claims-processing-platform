@@ -7,5 +7,6 @@ public interface IArtifactExecutor
 {
     Task<ArtifactExecutionResult> ExecuteAsync(
         ExecutionArtifact artifact,
+        DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default);
 }

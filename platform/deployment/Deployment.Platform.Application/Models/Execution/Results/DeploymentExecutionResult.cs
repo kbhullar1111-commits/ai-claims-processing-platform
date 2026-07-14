@@ -23,6 +23,5 @@ public sealed class ArtifactExecutionResult
     public bool Successful { get; init;}
     public required DateTime StartedAt { get; init;}
     public required DateTime CompletedAt { get; init;}
-    public required TimeSpan Duration { get; init;}
     public string? ErrorMessage { get; init;}
 }

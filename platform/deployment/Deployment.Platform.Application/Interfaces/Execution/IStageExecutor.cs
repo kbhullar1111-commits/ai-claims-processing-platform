@@ -7,5 +7,6 @@ public interface IStageExecutor
 {
     Task<StageExecutionResult> ExecuteAsync(
         ExecutionStage stage,
+        DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default);
 }

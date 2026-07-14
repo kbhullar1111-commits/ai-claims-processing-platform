@@ -9,6 +9,7 @@ public sealed class SimulatedArtifactExecutor : IArtifactExecutor
 {
     public async Task<ArtifactExecutionResult> ExecuteAsync(
         ExecutionArtifact artifact,
+        DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -23,8 +24,6 @@ public sealed class SimulatedArtifactExecutor : IArtifactExecutor
             StartedAt = startedAt,
 
             CompletedAt = completedAt,
-
-            Duration = completedAt - startedAt,
 
             Successful = true,
 

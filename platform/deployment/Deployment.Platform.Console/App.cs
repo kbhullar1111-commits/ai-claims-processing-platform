@@ -65,12 +65,22 @@ public sealed class App
         Console.WriteLine();
         Console.WriteLine("Building execution graph for impacted deployment plan...");
         ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
+        DateTime utcNow = DateTime.UtcNow;
+        string releaseName = $"release-{utcNow:yyyyMMdd-HHmmss}";
         var deploymentExecutionRequest = new DeploymentExecutionRequest
         {
-            Environment = "Dev",
             ExecutionGraph = executionGraph,
             DryRun = true,
-            AutoApprove = false
+            AutoApprove = false,
+            DeploymentEnvironment = new DeploymentEnvironment
+            {
+                Name = "Dev",
+                AcrName = "aiclaimsacr",
+                AcrServer = "aiclaimsacr.azurecr.io",
+                ContainerAppEnvironment = "aiclaims-aca-env",
+                ResourceGroup = "rg-ai-claims-dev",
+                ImageTag = releaseName
+            }
         };
         var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         //ConsolePrinter.PrintExecutionGraph(executionGraph);
