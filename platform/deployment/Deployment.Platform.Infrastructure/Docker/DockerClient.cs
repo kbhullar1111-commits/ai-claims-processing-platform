@@ -46,11 +46,23 @@ public sealed class DockerClient
 
     public async Task<ProcessResult> TagImageAsync(
         string imageName,
-        string acrServer,
-        string imageTag,
+        string taggedImageName,
         CancellationToken cancellationToken)
     {
-        var command =$"tag {imageName} {acrServer}/{imageName}:{imageTag}";
+        var command =$"tag {imageName} {taggedImageName}";
+        return await _processRunner.ExecuteAsync(
+            "docker",
+            command,
+            _repositoryPath,
+            cancellationToken
+        );
+    }
+
+    public async Task<ProcessResult> PushImageAsync(
+        string taggedImageName,
+        CancellationToken cancellationToken)
+    {
+        var command =$"push {taggedImageName}";
         return await _processRunner.ExecuteAsync(
             "docker",
             command,

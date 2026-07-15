@@ -9,4 +9,8 @@ public interface IProcessRunner
         string arguments,
         string? workingDirectory = null,
         CancellationToken cancellationToken = default);
+
+    Task<ProcessResult> ExecuteShellCommandAsync(
+        string command,
+        CancellationToken cancellationToken);
 }
