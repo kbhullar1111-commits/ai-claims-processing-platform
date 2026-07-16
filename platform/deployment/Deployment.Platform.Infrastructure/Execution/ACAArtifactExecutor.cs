@@ -41,17 +41,10 @@ public sealed class ACAArtifactExecutor : IArtifactExecutor
         }
 
         var artifactName = artifact.Artifact.Name;
-        var taggedImageName = $"{deploymentEnvironment.AcrServer}/{artifactName}:{deploymentEnvironment.ImageTag}";
+        var taggedImageName = $"{deploymentEnvironment.ContainerRegistryServer}/{artifactName}:{deploymentEnvironment.ImageTag}";
 
         var dockerTagResult = await _dockerClient.TagImageAsync(artifactName, taggedImageName, cancellationToken);
         failureResult = GetFailureResult(dockerTagResult, artifactName, startedAt);
-        if (failureResult is not null)
-        {
-            return failureResult;
-        }
-
-        var registryLoginResult = await _acaClient.AuthenticateRegistryAsync(deploymentEnvironment.AcrName, cancellationToken);
-        failureResult = GetFailureResult(registryLoginResult, artifactName, startedAt);
         if (failureResult is not null)
         {
             return failureResult;

@@ -6,9 +6,9 @@ public sealed class DeploymentEnvironment
 
     public required string ResourceGroup { get; init; }
 
-    public required string AcrName { get; init; }
+    public required string ContainerRegistryName { get; init; }
 
-    public required string AcrServer { get; init; }
+    public required string ContainerRegistryServer { get; init; }
 
     public required string ContainerAppEnvironment { get; init; }
 

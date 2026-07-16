@@ -52,6 +52,8 @@ var host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<IDeploymentTargetValidator, AzureEnvironmentValidator>();
 
+        services.AddSingleton<IContainerRegistryAuthenticator, ACRAuthenticator>();
+
         services.AddSingleton<DockerClient>();
 
         services.AddSingleton<ACAClient>();

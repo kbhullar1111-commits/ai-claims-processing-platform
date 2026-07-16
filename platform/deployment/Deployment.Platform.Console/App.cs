@@ -75,8 +75,8 @@ public sealed class App
             DeploymentEnvironment = new DeploymentEnvironment
             {
                 Name = "Dev",
-                AcrName = "aiclaimsacr",
-                AcrServer = "aiclaimsacr.azurecr.io",
+                ContainerRegistryName = "aiclaimsacr",
+                ContainerRegistryServer = "aiclaimsacr.azurecr.io",
                 ContainerAppEnvironment = "aiclaims-aca-env",
                 ResourceGroup = "rg-ai-claims-dev",
                 ImageTag = releaseName

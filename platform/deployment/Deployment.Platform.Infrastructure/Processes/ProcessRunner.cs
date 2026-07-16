@@ -14,10 +14,13 @@ public sealed class ProcessRunner : IProcessRunner
         CancellationToken cancellationToken = default) =>
         RunProcessAsync(fileName, arguments, workingDirectory, cancellationToken);
 
-    public Task<ProcessResult> ExecuteShellCommandAsync(
+    public async Task<ProcessResult> ExecuteShellCommandAsync(
         string command,
-        CancellationToken cancellationToken) =>
-        RunProcessAsync("cmd.exe", $"/c {command}", null, cancellationToken, command);
+        CancellationToken cancellationToken)
+    {
+        var (shell, arguments) = GetShellCommand(command);
+        return await RunProcessAsync(shell, arguments, null, cancellationToken, command).ConfigureAwait(false);
+    }
 
     private static async Task<ProcessResult> RunProcessAsync(
         string fileName,
@@ -72,5 +75,21 @@ public sealed class ProcessRunner : IProcessRunner
                 StandardError = ex.Message
             };
         }
+    }
+
+    private static (string Shell, string Arguments) GetShellCommand(string command)
+    {
+        
+        if (OperatingSystem.IsWindows())
+            return ("cmd.exe", $"/c {command}");
+
+        if (OperatingSystem.IsLinux())
+            return ("/bin/sh", $"-c \"{command}\"");
+
+        if (OperatingSystem.IsMacOS())
+            return ("/bin/sh", $"-c \"{command}\"");
+
+        throw new PlatformNotSupportedException(
+            $"Unsupported operating system: {Environment.OSVersion}");
     }
 }

@@ -9,15 +9,18 @@ public sealed class DeploymentExecutor : IDeploymentExecutor
     private readonly IStageExecutor _stageExecutor;
     private readonly IExecutionEnvironmentValidator _executionEnvironmentValidator;
     private readonly IDeploymentTargetValidator _deploymentEnvironmentValidator;
+    private readonly IContainerRegistryAuthenticator _containerRegistryAuthenticator;
 
     public DeploymentExecutor(
         IStageExecutor stageExecutor,
         IExecutionEnvironmentValidator executionEnvironmentValidator,
-        IDeploymentTargetValidator deploymentEnvironmentValidator)
+        IDeploymentTargetValidator deploymentEnvironmentValidator,
+        IContainerRegistryAuthenticator containerRegistryAuthenticator)
     {
         _stageExecutor = stageExecutor;
         _executionEnvironmentValidator = executionEnvironmentValidator;
         _deploymentEnvironmentValidator = deploymentEnvironmentValidator;
+        _containerRegistryAuthenticator = containerRegistryAuthenticator;
     }
     public async Task<DeploymentExecutionResult> ExecuteAsync(
         DeploymentExecutionRequest request,
@@ -28,6 +31,11 @@ public sealed class DeploymentExecutor : IDeploymentExecutor
 
         await _executionEnvironmentValidator.ValidateAsync(cancellationToken);
         await _deploymentEnvironmentValidator.ValidateAsync(deploymentEnvironment, cancellationToken);
+
+        await _containerRegistryAuthenticator.AuthenticateContainerRegistryAsync(
+            deploymentEnvironment.ContainerRegistryName,
+            deploymentEnvironment.ContainerRegistryServer,
+            cancellationToken);
 
         var stageResults  = new List<StageExecutionResult>();   
 
