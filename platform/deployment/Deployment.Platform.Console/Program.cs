@@ -18,6 +18,7 @@ using Deployment.Platform.Infrastructure.Azure;
 using Deployment.Platform.Infrastructure.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using YamlDotNet.Core;
 
 const string manifestPath = "../../../deployment.manifest.yaml";
 
@@ -62,6 +63,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
+DeploymentCommand command = CommandLineParser.Parse(args);
+
 await host.Services
     .GetRequiredService<App>()
-    .RunAsync();
+    .RunAsync(command);

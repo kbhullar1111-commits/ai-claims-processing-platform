@@ -36,7 +36,7 @@ public sealed class App
         _deploymentExecutor = deploymentExecutor;
     }
 
-    public async Task RunAsync()
+    public async Task RunAsync(DeploymentCommand command)
     {
         Console.WriteLine("Deployment Platform");
         Console.WriteLine("-------------------");
@@ -60,7 +60,7 @@ public sealed class App
 
         Console.WriteLine();
         Console.WriteLine("Generating deployment plan based on impacted artifacts...");
-        DeploymentPlan impactedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Impacted, impactResult);
+        DeploymentPlan impactedPlan = GenerateDeploymentPlan(manifest, command.Strategy, impactResult);
         //ConsolePrinter.PrintDeploymentPlan(impactedPlan);
         Console.WriteLine();
         Console.WriteLine("Building execution graph for impacted deployment plan...");
@@ -70,11 +70,11 @@ public sealed class App
         var deploymentExecutionRequest = new DeploymentExecutionRequest
         {
             ExecutionGraph = executionGraph,
-            DryRun = true,
-            AutoApprove = false,
+            DryRun = command.DryRun,
+            AutoApprove = command.AutoApprove,
             DeploymentEnvironment = new DeploymentEnvironment
             {
-                Name = "Dev",
+                Name = command.Environment,
                 ContainerRegistryName = "aiclaimsacr",
                 ContainerRegistryServer = "aiclaimsacr.azurecr.io",
                 ContainerAppEnvironment = "aiclaims-aca-env",
@@ -82,10 +82,10 @@ public sealed class App
                 ImageTag = releaseName
             }
         };
-        var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
+        //var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         //ConsolePrinter.PrintExecutionGraph(executionGraph);
         Console.WriteLine("Executing the deployment plan...");
-        ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
+        //ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
 
         // Console.WriteLine();
         // Console.WriteLine("Generating deployment plan based on selected artifacts...");

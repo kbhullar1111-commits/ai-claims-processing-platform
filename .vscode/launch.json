@@ -147,7 +147,13 @@
       "request": "launch",
       "preLaunchTask": "build-deployment-console",
       "program": "${workspaceFolder}/platform/deployment/Deployment.Platform.Console/bin/Debug/net10.0/Deployment.Platform.Console.dll",
-      "args": [],
+      "args": [
+        "deploy",
+        "--strategy",
+        "impacted",
+        "--environment",
+        "dev"
+      ],
       "cwd": "${workspaceFolder}/platform/deployment/Deployment.Platform.Console",
       "stopAtEntry": false,
       "sourceFileMap": {}
