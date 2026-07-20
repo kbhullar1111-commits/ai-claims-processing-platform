@@ -22,6 +22,7 @@ public sealed class ACAArtifactExecutor : IArtifactExecutor
     }
     public async Task<ArtifactExecutionResult> ExecuteAsync(
         ExecutionArtifact artifact,
+        string imageTag,
         DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default)
     {
@@ -41,7 +42,7 @@ public sealed class ACAArtifactExecutor : IArtifactExecutor
         }
 
         var artifactName = artifact.Artifact.Name;
-        var taggedImageName = $"{deploymentEnvironment.ContainerRegistryServer}/{artifactName}:{deploymentEnvironment.ImageTag}";
+        var taggedImageName = $"{deploymentEnvironment.ContainerRegistryServer}/{artifactName}:{imageTag}";
 
         var dockerTagResult = await _dockerClient.TagImageAsync(artifactName, taggedImageName, cancellationToken);
         failureResult = GetFailureResult(dockerTagResult, artifactName, startedAt);

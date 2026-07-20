@@ -44,6 +44,7 @@ public sealed class DeploymentExecutor : IDeploymentExecutor
           cancellationToken.ThrowIfCancellationRequested();
           var stageResult =   await _stageExecutor.ExecuteAsync(
             stage,
+            request.ImageTag,
             deploymentEnvironment,
             cancellationToken);
 

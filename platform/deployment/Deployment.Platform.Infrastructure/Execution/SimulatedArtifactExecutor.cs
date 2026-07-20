@@ -9,6 +9,7 @@ public sealed class SimulatedArtifactExecutor : IArtifactExecutor
 {
     public async Task<ArtifactExecutionResult> ExecuteAsync(
         ExecutionArtifact artifact,
+        string imageTag,
         DeploymentEnvironment deploymentEnvironment,
         CancellationToken cancellationToken = default)
     {

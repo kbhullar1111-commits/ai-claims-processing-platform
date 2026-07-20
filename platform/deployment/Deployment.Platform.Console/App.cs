@@ -10,6 +10,7 @@ using Deployment.Platform.Domain.Impact;
 using Deployment.Platform.Domain.Manifest;
 using Deployment.Platform.Domain.Planning;
 using Deployment.Platform.Domain.Execution;
+using Deployment.Platform.Application.Interfaces.Configuration;
 
 public sealed class App
 {
@@ -19,9 +20,11 @@ public sealed class App
     private readonly IDeploymentPlanner _deploymentPlanner;
     private readonly IExecutionGraphBuilder _graphBuilder;
     private readonly IDeploymentExecutor _deploymentExecutor;
+    private readonly IDeploymentEnvironmentProvider _deploymentEnvironmentProvider;
 
     public App(
         IManifestProvider manifestProvider,
+        IDeploymentEnvironmentProvider deploymentEnvironmentProvider,
         IRepositoryChangeProvider repositoryChangeProvider,
         IImpactAnalyzer impactAnalyzer,
         IDeploymentPlanner deploymentPlanner,
@@ -29,6 +32,7 @@ public sealed class App
         IDeploymentExecutor deploymentExecutor)
     {
         _manifestProvider = manifestProvider;
+        _deploymentEnvironmentProvider = deploymentEnvironmentProvider;
         _repositoryChangeProvider = repositoryChangeProvider;
         _impactAnalyzer = impactAnalyzer;
         _deploymentPlanner = deploymentPlanner;
@@ -67,20 +71,14 @@ public sealed class App
         ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
         DateTime utcNow = DateTime.UtcNow;
         string releaseName = $"release-{utcNow:yyyyMMdd-HHmmss}";
+        var deploymentEnvironment = await _deploymentEnvironmentProvider.GetAsync(command.Environment);
         var deploymentExecutionRequest = new DeploymentExecutionRequest
         {
             ExecutionGraph = executionGraph,
             DryRun = command.DryRun,
             AutoApprove = command.AutoApprove,
-            DeploymentEnvironment = new DeploymentEnvironment
-            {
-                Name = command.Environment,
-                ContainerRegistryName = "aiclaimsacr",
-                ContainerRegistryServer = "aiclaimsacr.azurecr.io",
-                ContainerAppEnvironment = "aiclaims-aca-env",
-                ResourceGroup = "rg-ai-claims-dev",
-                ImageTag = releaseName
-            }
+            ImageTag = releaseName,
+            DeploymentEnvironment = deploymentEnvironment
         };
         //var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         //ConsolePrinter.PrintExecutionGraph(executionGraph);

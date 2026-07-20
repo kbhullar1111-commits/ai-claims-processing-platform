@@ -12,5 +12,4 @@ public sealed class DeploymentEnvironment
 
     public required string ContainerAppEnvironment { get; init; }
 
-    public required string ImageTag { get; init; }
 }
