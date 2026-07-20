@@ -80,10 +80,10 @@ public sealed class App
             ImageTag = releaseName,
             DeploymentEnvironment = deploymentEnvironment
         };
-        //var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
+        var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         //ConsolePrinter.PrintExecutionGraph(executionGraph);
         Console.WriteLine("Executing the deployment plan...");
-        //ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
+        ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
 
         // Console.WriteLine();
         // Console.WriteLine("Generating deployment plan based on selected artifacts...");
