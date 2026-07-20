@@ -52,23 +52,28 @@ public sealed class App
 
         Console.WriteLine();
 
-        Console.WriteLine("Checking for working directory changes...");
-         var changeSet = await GetGitRepositoryChangesAsync();
+        ImpactAnalysisResult? impactResult = null;
+        if(command.Strategy == DeploymentStrategy.Impacted)
+        {
+            Console.WriteLine("Checking for working directory changes...");
+            var changeSet = await GetGitRepositoryChangesAsync();
 
-        // ConsolePrinter.PrintGitRepositoryChanges(changeSet);
+            // ConsolePrinter.PrintGitRepositoryChanges(changeSet);
+
+            Console.WriteLine();
+
+            Console.WriteLine("Analyzing impact of changes on artifacts...");
+            impactResult = AnalyzeImpact(manifest, changeSet);
+            // ConsolePrinter.PrintImpactAnalysisResult(impactResult);
+        }
 
         Console.WriteLine();
-        Console.WriteLine("Analyzing impact of changes on artifacts...");
-        var impactResult = AnalyzeImpact(manifest, changeSet);
-        // ConsolePrinter.PrintImpactAnalysisResult(impactResult);
-
-        Console.WriteLine();
-        Console.WriteLine("Generating deployment plan based on impacted artifacts...");
-        DeploymentPlan impactedPlan = GenerateDeploymentPlan(manifest, command.Strategy, impactResult);
+        Console.WriteLine($"Generating deployment plan based on {command.Strategy} artifacts...");
+        DeploymentPlan deploymentPlan = GenerateDeploymentPlan(manifest, command.Strategy, impactResult);
         //ConsolePrinter.PrintDeploymentPlan(impactedPlan);
         Console.WriteLine();
-        Console.WriteLine("Building execution graph for impacted deployment plan...");
-        ExecutionGraph executionGraph = CreateExecutionGraph(impactedPlan, manifest);
+        Console.WriteLine($"Building execution graph for {command.Strategy} deployment plan...");
+        ExecutionGraph executionGraph = CreateExecutionGraph(deploymentPlan, manifest);
         DateTime utcNow = DateTime.UtcNow;
         string releaseName = $"release-{utcNow:yyyyMMdd-HHmmss}";
         var deploymentEnvironment = await _deploymentEnvironmentProvider.GetAsync(command.Environment);
@@ -85,24 +90,6 @@ public sealed class App
         Console.WriteLine("Executing the deployment plan...");
         ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
 
-        // Console.WriteLine();
-        // Console.WriteLine("Generating deployment plan based on selected artifacts...");
-        // List<string> selectedArtifacts = new List<string> { "claims-service", "gateway-service" };
-        // DeploymentPlan selectedPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Selected, null, selectedArtifacts);
-        // //ConsolePrinter.PrintDeploymentPlan(selectedPlan);
-        // Console.WriteLine();
-        // Console.WriteLine("Building execution graph for selected deployment plan...");
-        // ExecutionGraph selectedExecutionGraph = CreateExecutionGraph(selectedPlan, manifest);
-        // ConsolePrinter.PrintExecutionGraph(selectedExecutionGraph);
-
-        // Console.WriteLine();
-        // Console.WriteLine("Generating deployment plan for all artifacts...");
-        // DeploymentPlan fullPlan = GenerateDeploymentPlan(manifest, DeploymentStrategy.Full, null, null);
-        // //ConsolePrinter.PrintDeploymentPlan(fullPlan);
-        // Console.WriteLine();
-        // Console.WriteLine("Building execution graph for full deployment plan...");
-        // ExecutionGraph fullExecutionGraph = CreateExecutionGraph(fullPlan, manifest);
-        // ConsolePrinter.PrintExecutionGraph(fullExecutionGraph);
     }
 
     private Task<RepositoryManifest> GetManifestAsync()
