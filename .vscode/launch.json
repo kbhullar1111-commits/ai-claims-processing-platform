@@ -151,6 +151,8 @@
         "deploy",
         "--strategy",
         "impacted",
+        "--target",
+        "AzureContainerApps",
         "--environment",
         "dev"
       ],

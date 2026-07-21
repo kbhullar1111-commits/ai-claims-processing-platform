@@ -9,8 +9,6 @@ namespace Deployment.Platform.Infrastructure.Configuration;
 
 public sealed class JsonDeploymentEnvironmentProvider : IDeploymentEnvironmentProvider
 {
-    private readonly string _repositoryPath;
-    private const string SettingsFileName = "deployment.settings.json";
 
     private static readonly JsonSerializerOptions JsonOptions =
     new()
@@ -18,35 +16,21 @@ public sealed class JsonDeploymentEnvironmentProvider : IDeploymentEnvironmentPr
         PropertyNameCaseInsensitive = true
     };
 
-    public JsonDeploymentEnvironmentProvider(RepositoryOptions repositoryOptions)
-    {
-        ArgumentNullException.ThrowIfNull(repositoryOptions);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            repositoryOptions.RepositoryPath);
-
-        _repositoryPath = FileSystemPathUtility.NormalizePath(repositoryOptions.RepositoryPath);
-
-        if (!Directory.Exists(_repositoryPath))
-        {
-            throw new DirectoryNotFoundException(
-                $"The specified repository path '{_repositoryPath}' does not exist.");
-        }
-    }
 
     public async Task<DeploymentEnvironment> GetAsync(
         string environmentName,
+        string settingsPath,
         CancellationToken cancellationToken = default)
     {
-        var settingsPath = Path.Combine(_repositoryPath, SettingsFileName);
+        var settingsPathNormalized = FileSystemPathUtility.NormalizePath(settingsPath);
 
-        if (!File.Exists(settingsPath))
+        if (!File.Exists(settingsPathNormalized))
         {
             throw new FileNotFoundException(
-                $"Deployment settings file '{settingsPath}' was not found.");
+                $"Deployment settings file '{settingsPathNormalized}' was not found.");
         }
 
-        await using var stream = File.OpenRead(settingsPath);
+        await using var stream = File.OpenRead(settingsPathNormalized);
 
         var settings = await JsonSerializer.DeserializeAsync<DeploymentSettingsFile>(
             stream,

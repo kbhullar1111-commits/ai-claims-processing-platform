@@ -1,4 +1,5 @@
 using Deployment.Platform.Application.Models;
+using Deployment.Platform.Application.Interfaces.Changes;
 using Deployment.Platform.Application.Interfaces.Process;
 using Deployment.Platform.Infrastructure.Utilities;
 
@@ -7,25 +8,13 @@ namespace Deployment.Platform.Infrastructure.Docker;
 public sealed class DockerClient
 {
     private readonly IProcessRunner _processRunner;
-    private readonly string _repositoryPath;
+    private readonly IRepositoryLocator _repositoryLocator;
 
     public DockerClient(        
-        RepositoryOptions repositoryOptions,
+        IRepositoryLocator repositoryLocator,
         IProcessRunner processRunner)
     {
-        ArgumentNullException.ThrowIfNull(repositoryOptions);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            repositoryOptions.RepositoryPath);
-
-        _repositoryPath = FileSystemPathUtility.NormalizePath(repositoryOptions.RepositoryPath);
-
-        if (!Directory.Exists(_repositoryPath))
-        {
-            throw new DirectoryNotFoundException(
-                $"The specified repository path '{_repositoryPath}' does not exist.");
-        }
-
+        _repositoryLocator = repositoryLocator;
         _processRunner = processRunner;
     }
 
@@ -36,12 +25,7 @@ public sealed class DockerClient
     {
         var dockerfilePathNormalized = FileSystemPathUtility.NormalizePath(dockerfilePath);
         var command =$"build -f {dockerfilePathNormalized} -t {imageName} .";
-        return await _processRunner.ExecuteAsync(
-            "docker",
-            command,
-            _repositoryPath,
-            cancellationToken
-        );
+        return await ExecuteDockerCommand(command, cancellationToken);
     }
 
     public async Task<ProcessResult> TagImageAsync(
@@ -50,12 +34,7 @@ public sealed class DockerClient
         CancellationToken cancellationToken)
     {
         var command =$"tag {imageName} {taggedImageName}";
-        return await _processRunner.ExecuteAsync(
-            "docker",
-            command,
-            _repositoryPath,
-            cancellationToken
-        );
+        return await ExecuteDockerCommand(command, cancellationToken);
     }
 
     public async Task<ProcessResult> PushImageAsync(
@@ -63,11 +42,20 @@ public sealed class DockerClient
         CancellationToken cancellationToken)
     {
         var command =$"push {taggedImageName}";
+        return await ExecuteDockerCommand(command, cancellationToken);
+    }
+
+    private async Task<ProcessResult> ExecuteDockerCommand(
+        string command,
+        CancellationToken cancellationToken)
+    {
+        var repositoryRoot =
+            await _repositoryLocator.GetRepositoryRootAsync(cancellationToken);
+
         return await _processRunner.ExecuteAsync(
             "docker",
             command,
-            _repositoryPath,
-            cancellationToken
-        );
+            repositoryRoot,
+            cancellationToken);
     }
 }

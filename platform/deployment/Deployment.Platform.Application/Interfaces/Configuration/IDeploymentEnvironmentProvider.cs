@@ -6,5 +6,6 @@ public interface IDeploymentEnvironmentProvider
 {
     Task<DeploymentEnvironment> GetAsync(
         string environmentName,
+        string settingsPath,
         CancellationToken cancellationToken = default);
 }

@@ -21,6 +21,7 @@ public sealed class App
     private readonly IExecutionGraphBuilder _graphBuilder;
     private readonly IDeploymentExecutor _deploymentExecutor;
     private readonly IDeploymentEnvironmentProvider _deploymentEnvironmentProvider;
+    private readonly IRepositoryLocator _repositoryLocator;
 
     public App(
         IManifestProvider manifestProvider,
@@ -29,7 +30,8 @@ public sealed class App
         IImpactAnalyzer impactAnalyzer,
         IDeploymentPlanner deploymentPlanner,
         IExecutionGraphBuilder graphBuilder,
-        IDeploymentExecutor deploymentExecutor)
+        IDeploymentExecutor deploymentExecutor,
+        IRepositoryLocator repositoryLocator)
     {
         _manifestProvider = manifestProvider;
         _deploymentEnvironmentProvider = deploymentEnvironmentProvider;
@@ -38,6 +40,7 @@ public sealed class App
         _deploymentPlanner = deploymentPlanner;
         _graphBuilder = graphBuilder;
         _deploymentExecutor = deploymentExecutor;
+        _repositoryLocator = repositoryLocator;
     }
 
     public async Task RunAsync(DeploymentCommand command)
@@ -56,7 +59,17 @@ public sealed class App
         if(command.Strategy == DeploymentStrategy.Impacted)
         {
             Console.WriteLine("Checking for working directory changes...");
-            var changeSet = await GetGitRepositoryChangesAsync();
+            
+            ChangeSet changeSet;
+
+            if (!string.IsNullOrWhiteSpace(command.BaseCommit) && !string.IsNullOrWhiteSpace(command.HeadCommit))
+            {
+                changeSet = await _repositoryChangeProvider.GetCommitChangesAsync(command.BaseCommit, command.HeadCommit);
+            }
+            else
+            {
+                changeSet = await GetGitRepositoryChangesAsync();
+            }
 
             // ConsolePrinter.PrintGitRepositoryChanges(changeSet);
 
@@ -74,9 +87,14 @@ public sealed class App
         Console.WriteLine();
         Console.WriteLine($"Building execution graph for {command.Strategy} deployment plan...");
         ExecutionGraph executionGraph = CreateExecutionGraph(deploymentPlan, manifest);
+        //ConsolePrinter.PrintExecutionGraph(executionGraph);
         DateTime utcNow = DateTime.UtcNow;
         string releaseName = $"release-{utcNow:yyyyMMdd-HHmmss}";
-        var deploymentEnvironment = await _deploymentEnvironmentProvider.GetAsync(command.Environment);
+
+        string repositoryRoot = await _repositoryLocator.GetRepositoryRootAsync();
+        string settingsPath = Path.Combine(repositoryRoot, command.SettingsPath);
+        var deploymentEnvironment = await _deploymentEnvironmentProvider.GetAsync(command.Environment, settingsPath);
+
         var deploymentExecutionRequest = new DeploymentExecutionRequest
         {
             ExecutionGraph = executionGraph,
@@ -85,9 +103,8 @@ public sealed class App
             ImageTag = releaseName,
             DeploymentEnvironment = deploymentEnvironment
         };
-        var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
-        //ConsolePrinter.PrintExecutionGraph(executionGraph);
         Console.WriteLine("Executing the deployment plan...");
+        var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
 
     }

@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using Deployment.Platform.Domain.Changes;
 using Deployment.Platform.Application.Interfaces.Changes;
-using Deployment.Platform.Application.Models;
 using Deployment.Platform.Application.Interfaces.Process;
 
 
@@ -10,38 +8,52 @@ namespace Deployment.Platform.Infrastructure.Git;
 public sealed class GitRepositoryChangeProvider
     : IRepositoryChangeProvider
 {
-    private readonly string _repositoryPath;
-    private const string _workingDirectoryCommand = "status --porcelain";
+    private readonly IRepositoryLocator _repositoryLocator;
 
     private readonly IProcessRunner _processRunner;
 
     public GitRepositoryChangeProvider(
-        RepositoryOptions repositoryOptions,
+        IRepositoryLocator repositoryLocator,
         IProcessRunner processRunner)
     {
-        ArgumentNullException.ThrowIfNull(repositoryOptions);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            repositoryOptions.RepositoryPath);
-
-        _repositoryPath = repositoryOptions.RepositoryPath;
-
-        if (!Directory.Exists(_repositoryPath))
-        {
-            throw new DirectoryNotFoundException(
-                $"The specified repository path '{_repositoryPath}' does not exist.");
-        }
-
+        _repositoryLocator = repositoryLocator;
         _processRunner = processRunner;
     }
 
     public async Task<ChangeSet> GetWorkingDirectoryChangesAsync(CancellationToken cancellationToken = default)
     {
 
+        var changeSet = await ExecuteGitCommand(
+        "status --porcelain",
+        ParseWorkingDirectoryChanges,
+        cancellationToken);
+       
+        return changeSet;
+    }
+
+    public async Task<ChangeSet> GetCommitChangesAsync(
+        string baseCommit,
+        string headCommit,
+        CancellationToken cancellationToken = default)
+    {
+        var changeSet = await ExecuteGitCommand(
+        $"diff --name-only {baseCommit} {headCommit}",
+        ParseCommitChanges,
+        cancellationToken);
+       
+        return changeSet;
+    }
+
+    private async Task<ChangeSet> ExecuteGitCommand(
+        string command,
+        Func<string, ChangeSet> parser,
+        CancellationToken cancellationToken)
+    {
+        string repositoryPath = await _repositoryLocator.GetRepositoryRootAsync(cancellationToken);
         var processResult = await _processRunner.ExecuteAsync(
             "git",
-            _workingDirectoryCommand,
-            _repositoryPath,
+            command,
+            repositoryPath,
             cancellationToken
         );
 
@@ -51,15 +63,9 @@ public sealed class GitRepositoryChangeProvider
                 $"Git command failed with exit code {processResult.ExitCode}: {processResult.StandardError}");
         }
 
-        var changeSet = ParseWorkingDirectoryChanges(processResult.StandardOutput);
+        var changeSet = parser(processResult.StandardOutput);
 
         return changeSet;
-    }
-
-    public async Task<ChangeSet> GetCommitChangesAsync(CancellationToken cancellationToken = default)
-    {
-        // TODO: Implement git commit changes loading
-        return new ChangeSet([]);
     }
 
     private static ChangeSet ParseWorkingDirectoryChanges(string output)
@@ -79,6 +85,18 @@ public sealed class GitRepositoryChangeProvider
         }
 
         return new ChangeSet(changedFiles);
+    }
+
+    private static ChangeSet ParseCommitChanges(string output)
+    {
+        var files = output
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(path => path.Trim())
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => new ChangedFile(path))
+            .ToList();
+
+        return new ChangeSet(files);
     }
 
 }

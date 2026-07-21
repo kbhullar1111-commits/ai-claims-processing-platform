@@ -14,9 +14,14 @@ public static class CommandLineParser
         }
 
         DeploymentStrategy? strategy = null;
+        DeploymentTarget? target = null;
         string? environment = null;
         bool dryRun = false;
         bool autoApprove = false;
+        string? baseCommit = null;
+        string? headCommit = null;
+        string? manifestPath = null;
+        string? settingsPath = null;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -24,12 +29,36 @@ public static class CommandLineParser
             {
                 case "--strategy":
                     EnsureValue(args, i);
-                    if(Enum.TryParse<DeploymentStrategy>(
+                    if (Enum.TryParse<DeploymentStrategy>(
                         args[++i],
                         ignoreCase: true,
                         out var parsedStrategy)
                     )
+                    {
                         strategy = parsedStrategy;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(
+                            $"Unknown deployment strategy '{args[i]}'.");
+                    }
+                    break;
+
+                case "--target":
+                    EnsureValue(args, i);
+                    if (Enum.TryParse<DeploymentTarget>(
+                        args[++i],
+                        ignoreCase: true,
+                        out var parsedTarget)
+                    )
+                    {
+                        target = parsedTarget;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(
+                            $"Unknown deployment target '{args[i]}'.");
+                    }
                     break;
 
                 case "--environment":
@@ -45,6 +74,26 @@ public static class CommandLineParser
                     autoApprove = true;
                     break;
 
+                case "--base":
+                    EnsureValue(args, i);
+                    baseCommit = args[++i];
+                    break;
+
+                case "--head":
+                    EnsureValue(args, i);
+                    headCommit = args[++i];
+                    break;
+
+                case "--manifest":
+                    EnsureValue(args, i);
+                    manifestPath = args[++i];
+                    break;
+
+                case "--settings":
+                    EnsureValue(args, i);
+                    settingsPath = args[++i];
+                    break;
+
                 default:
                     throw new ArgumentException(
                         $"Unknown argument '{args[i]}'.");
@@ -57,10 +106,23 @@ public static class CommandLineParser
                 "--strategy is required.");
         }
 
+        if (target is null)
+        {
+            throw new ArgumentException(
+                "--target is required.");
+        }
+
         if (string.IsNullOrWhiteSpace(environment))
         {
             throw new ArgumentException(
                 "--environment is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(baseCommit) ^
+            string.IsNullOrWhiteSpace(headCommit))
+        {
+            throw new ArgumentException(
+                "--base and --head must be specified together.");
         }
 
         return new DeploymentCommand
@@ -69,7 +131,11 @@ public static class CommandLineParser
             Environment = environment,
             DryRun = dryRun,
             AutoApprove = autoApprove,
-            Target = DeploymentTarget.AzureContainerApps
+            Target = target.Value,
+            BaseCommit = baseCommit,
+            HeadCommit = headCommit,
+            ManifestPath = manifestPath ?? "deployment.manifest.yaml",
+            SettingsPath = settingsPath ?? "deployment.settings.json"
         };
     }
 
