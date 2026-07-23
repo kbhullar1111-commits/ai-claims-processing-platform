@@ -13,7 +13,10 @@ jobs:
       contents: read
 
     steps:
-      - run: echo "Hello from GitHub Runner"
+      - run: pwd
+        run: ls -la
+        run: whoami
+        run: uname -a
 
       # - name: Checkout repository
       #   uses: actions/checkout@v4
