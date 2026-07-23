@@ -13,25 +13,22 @@ jobs:
       contents: read
 
     steps:
-      - run: pwd
-      - run: whoami
-      - run: uname -a
 
-      # - name: Checkout repository
-      #   uses: actions/checkout@v4
-      #   with:
-      #     fetch-depth: 2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      # - name: Setup .NET
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: 10.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
-      # - name: Restore
-      #   run: dotnet restore platform/deployment/Deployment.Platform.Console
+      - name: Restore
+        run: dotnet restore platform/deployment/Deployment.Platform.Console
 
-      # - name: Build
-      #   run: dotnet build platform/deployment/Deployment.Platform.Console --configuration Release --no-restore
+      - name: Build
+        run: dotnet build platform/deployment/Deployment.Platform.Console --configuration Release --no-restore
 
       # - name: Azure Login
       #   uses: azure/login@v2
