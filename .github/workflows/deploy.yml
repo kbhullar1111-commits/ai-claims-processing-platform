@@ -14,9 +14,8 @@ jobs:
 
     steps:
       - run: pwd
-        run: ls -la
-        run: whoami
-        run: uname -a
+      - run: whoami
+      - run: uname -a
 
       # - name: Checkout repository
       #   uses: actions/checkout@v4
