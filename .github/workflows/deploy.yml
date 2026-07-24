@@ -29,9 +29,7 @@ jobs:
         run: dotnet restore platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj
 
       - name: Build
-        run: dotnet build platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj \
-            --configuration Release \
-            --no-restore
+        run: dotnet build platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj --configuration Release --no-restore
 
       - name: Azure Login
         uses: azure/login@v2
