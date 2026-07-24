@@ -77,6 +77,11 @@ public sealed class App
 
             Console.WriteLine("Analyzing impact of changes on artifacts...");
             impactResult = AnalyzeImpact(manifest, changeSet);
+            if (impactResult.Artifacts.Count == 0)
+            {
+                Console.WriteLine("No impacted artifacts found. Nothing to deploy.");
+                return;
+            }
             // ConsolePrinter.PrintImpactAnalysisResult(impactResult);
         }
 
