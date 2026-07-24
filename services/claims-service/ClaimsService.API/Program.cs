@@ -32,6 +32,7 @@ using Azure.Monitor.OpenTelemetry.Exporter;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 var keyVaultEndpoint = builder.Configuration["KeyVault:Url"];

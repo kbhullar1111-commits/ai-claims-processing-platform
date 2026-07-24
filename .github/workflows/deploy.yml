@@ -49,25 +49,13 @@ jobs:
       - name: Docker Version
         run: docker --version
 
-      - name: ACR Login
-        run: az acr login --name aiclaimsacr
-
-      - name: Docker Build
-        run: docker build -f services/gateway-service/GatewayService.API/Dockerfile -t gateway-service .
-
-      - name: Docker Tag
-        run: docker tag gateway-service aiclaimsacr.azurecr.io/gateway-service:test_release_push
-      
-      - name: Docker Push
-        run: docker push aiclaimsacr.azurecr.io/gateway-service:test_release_push
-
-      # - name: Deploy--
-      #   run: |
-      #     dotnet run \
-      #       --project platform/deployment/Deployment.Platform.Console \
-      #       -- deploy \
-      #       --strategy impacted \
-      #       --target AzureContainerApps \
-      #       --environment dev \
-      #       --base ${{ github.event.before }} \
-      #       --head ${{ github.sha }}
+      - name: Deploy--
+        run: |
+          dotnet run \
+            --project platform/deployment/Deployment.Platform.Console \
+            -- deploy \
+            --strategy impacted \
+            --target AzureContainerApps \
+            --environment dev \
+            --base ${{ github.event.before }} \
+            --head ${{ github.sha }}
