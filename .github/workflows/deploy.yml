@@ -61,7 +61,7 @@ jobs:
       - name: Docker Push
         run: docker push aiclaimsacr.azurecr.io/gateway-service:test_release_push
 
-      # - name: Deploy
+      # - name: Deploy--
       #   run: |
       #     dotnet run \
       #       --project platform/deployment/Deployment.Platform.Console \
