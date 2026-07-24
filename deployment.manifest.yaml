@@ -83,7 +83,8 @@ artifacts:
       - PaymentService.API/obj
       - PaymentService.API/bin
 
-  - name: document-processor
-    type: function
-    root: serverless/document-processor-function
-    entryPoint: serverless/document-processor-function
+  # Will work on fucntion app deployment automation later
+  # - name: document-processor
+  #   type: function
+  #   root: serverless/document-processor-function
+  #   entryPoint: serverless/document-processor-function
