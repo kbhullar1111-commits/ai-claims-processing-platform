@@ -87,14 +87,20 @@ jobs:
       - name: Docker Version
         run: docker --version
 
-      - name: Deploy--
+      - name: Deploy
         run: |
+          BASE_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          HEAD_COMMIT=$(git rev-parse HEAD)
+
+          echo "Base Commit: $BASE_COMMIT"
+          echo "Head Commit: $HEAD_COMMIT"
+
           dotnet run \
             --project platform/deployment/Deployment.Platform.Console \
             -- deploy \
             --strategy ${{ inputs.strategy }} \
             --target AzureContainerApps \
             --environment ${{ inputs.environment }} \
-            --base ${{ github.event.before }} \
-            --head ${{ github.sha }} \
-            --artifacts "${{ inputs.artifacts }}"
+            --base "$BASE_COMMIT" \
+            --head "$HEAD_COMMIT" \
+            --artifacts "${{ inputs.artifacts }}" 
