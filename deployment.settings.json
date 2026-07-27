@@ -1,0 +1,22 @@
+{
+  "environments": {
+    "dev": {
+      "resourceGroup": "rg-ai-claims-dev",
+      "containerRegistryName": "aiclaimsacr",
+      "containerRegistryServer": "aiclaimsacr.azurecr.io",
+      "containerAppEnvironment": "aiclaims-aca-env"
+    },
+    "qa": {
+      "resourceGroup": "rg-ai-claims-qa",
+      "containerRegistryName": "aiclaimsacr",
+      "containerRegistryServer": "aiclaimsacr.azurecr.io",
+      "containerAppEnvironment": "aiclaims-aca-env"
+    },
+    "prod": {
+      "resourceGroup": "rg-ai-claims-prod",
+      "containerRegistryName": "aiclaimsacr",
+      "containerRegistryServer": "aiclaimsacr.azurecr.io",
+      "containerAppEnvironment": "aiclaims-aca-env"
+    }
+  }
+}

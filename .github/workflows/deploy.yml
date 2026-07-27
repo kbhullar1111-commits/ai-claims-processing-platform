@@ -1,0 +1,100 @@
+name: Deploy
+
+# on:
+#   push:
+#     branches:
+#       - dev
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      strategy:
+        description: Deployment strategy
+        required: true
+        default: impacted
+        type: choice
+
+        options:
+          - impacted
+          - selected
+          - full
+
+      artifacts:
+        description: Comma separated artifact names
+        required: false
+        type: string
+
+      environment:
+        description: Deployment environment
+        required: true
+        default: dev
+        type: choice
+
+        options:
+          - dev
+          - qa
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+
+      - name: Validate inputs
+        run: |
+          if [ "${{ inputs.strategy }}" = "selected" ] && [ -z "${{ inputs.artifacts }}" ]; then
+            echo "Selected strategy requires artifact names."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj
+
+      - name: Build
+        run: dotnet build platform/deployment/Deployment.Platform.Console/Deployment.Platform.Console.csproj --configuration Release --no-restore
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure Login
+        run: |
+          az account show
+          az group list --output table
+
+      - name: Verify ACR
+        run: az acr repository list --name aiclaimsacr --output table
+
+      - name: Docker Version
+        run: docker --version
+
+      - name: Deploy--
+        run: |
+          dotnet run \
+            --project platform/deployment/Deployment.Platform.Console \
+            -- deploy \
+            --strategy ${{ inputs.strategy }} \
+            --target AzureContainerApps \
+            --environment ${{ inputs.environment }} \
+            --base ${{ github.event.before }} \
+            --head ${{ github.sha }} \
+            --artifacts "${{ inputs.artifacts }}"

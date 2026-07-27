@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Deployment.Platform.Application.Tests/Deployment.Platform.Application.Tests.csproj" />
+  </Folder>
+  <Project Path="Deployment.Platform.Application/Deployment.Platform.Application.csproj" />
+  <Project Path="Deployment.Platform.Console/Deployment.Platform.Console.csproj" />
+  <Project Path="Deployment.Platform.Domain/Deployment.Platform.Domain.csproj" />
+  <Project Path="Deployment.Platform.Infrastructure/Deployment.Platform.Infrastructure.csproj" />
+</Solution>
