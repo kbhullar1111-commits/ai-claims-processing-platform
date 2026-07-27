@@ -46,6 +46,7 @@ jobs:
     steps:
 
       - name: Validate inputs
+        if: github.event_name == 'workflow_dispatch'
         run: |
           if [ "${{ inputs.strategy }}" = "selected" ] && [ -z "${{ inputs.artifacts }}" ]; then
             echo "Selected strategy requires artifact names."
@@ -108,12 +109,23 @@ jobs:
           echo "Environment: $ENVIRONMENT"
           echo "Artifacts: $ARTIFACTS"
 
-          dotnet run \
-            --project platform/deployment/Deployment.Platform.Console \
-            -- deploy \
-            --strategy "$STRATEGY" \
-            --target AzureContainerApps \
-            --environment "$ENVIRONMENT" \
-            --base "$BASE_COMMIT" \
-            --head "$HEAD_COMMIT" \
-            --artifacts "$ARTIFACTS"
+          if [ -n "$ARTIFACTS" ]; then
+              dotnet run \
+                --project platform/deployment/Deployment.Platform.Console \
+                -- deploy \
+                --strategy "$STRATEGY" \
+                --target AzureContainerApps \
+                --environment "$ENVIRONMENT" \
+                --base "$BASE_COMMIT" \
+                --head "$HEAD_COMMIT" \
+                --artifacts "$ARTIFACTS"
+          else
+              dotnet run \
+                --project platform/deployment/Deployment.Platform.Console \
+                -- deploy \
+                --strategy "$STRATEGY" \
+                --target AzureContainerApps \
+                --environment "$ENVIRONMENT" \
+                --base "$BASE_COMMIT" \
+                --head "$HEAD_COMMIT"
+          fi
