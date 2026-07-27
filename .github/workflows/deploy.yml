@@ -1,11 +1,10 @@
 name: Deploy
 
-# on:
-#   push:
-#     branches:
-#       - dev
-
 on:
+  push:
+    branches:
+      - dev
+
   workflow_dispatch:
     inputs:
 
@@ -40,6 +39,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    environment:
+      name: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+
+    concurrency:
+      group: deploy-${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+      cancel-in-progress: false
+
     permissions:
       contents: read
       id-token: write
@@ -47,6 +53,7 @@ jobs:
     steps:
 
       - name: Validate inputs
+        if: github.event_name == 'workflow_dispatch'
         run: |
           if [ "${{ inputs.strategy }}" = "selected" ] && [ -z "${{ inputs.artifacts }}" ]; then
             echo "Selected strategy requires artifact names."
@@ -87,14 +94,45 @@ jobs:
       - name: Docker Version
         run: docker --version
 
-      - name: Deploy--
+      - name: Deploy
         run: |
-          dotnet run \
-            --project platform/deployment/Deployment.Platform.Console \
-            -- deploy \
-            --strategy ${{ inputs.strategy }} \
-            --target AzureContainerApps \
-            --environment ${{ inputs.environment }} \
-            --base ${{ github.event.before }} \
-            --head ${{ github.sha }} \
-            --artifacts "${{ inputs.artifacts }}"
+          BASE_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          HEAD_COMMIT=$(git rev-parse HEAD)
+
+          echo "Base Commit: $BASE_COMMIT"
+          echo "Head Commit: $HEAD_COMMIT"
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            STRATEGY="impacted"
+            ENVIRONMENT="dev"
+            ARTIFACTS=""
+          else
+            STRATEGY="${{ inputs.strategy }}"
+            ENVIRONMENT="${{ inputs.environment }}"
+            ARTIFACTS="${{ inputs.artifacts }}"
+          fi
+
+          echo "Strategy: $STRATEGY"
+          echo "Environment: $ENVIRONMENT"
+          echo "Artifacts: $ARTIFACTS"
+
+          if [ -n "$ARTIFACTS" ]; then
+              dotnet run \
+                --project platform/deployment/Deployment.Platform.Console \
+                -- deploy \
+                --strategy "$STRATEGY" \
+                --target AzureContainerApps \
+                --environment "$ENVIRONMENT" \
+                --base "$BASE_COMMIT" \
+                --head "$HEAD_COMMIT" \
+                --artifacts "$ARTIFACTS"
+          else
+              dotnet run \
+                --project platform/deployment/Deployment.Platform.Console \
+                -- deploy \
+                --strategy "$STRATEGY" \
+                --target AzureContainerApps \
+                --environment "$ENVIRONMENT" \
+                --base "$BASE_COMMIT" \
+                --head "$HEAD_COMMIT"
+          fi

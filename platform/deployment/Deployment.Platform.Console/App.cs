@@ -72,6 +72,7 @@ public sealed class App
             }
 
             // ConsolePrinter.PrintGitRepositoryChanges(changeSet);
+            
 
             Console.WriteLine();
 
