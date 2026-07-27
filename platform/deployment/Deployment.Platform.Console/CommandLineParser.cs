@@ -22,6 +22,7 @@ public static class CommandLineParser
         string? headCommit = null;
         string? manifestPath = null;
         string? settingsPath = null;
+        string? selectedArtifacts = null;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -94,6 +95,11 @@ public static class CommandLineParser
                     settingsPath = args[++i];
                     break;
 
+                case "--artifacts":
+                    EnsureValue(args, i);
+                    selectedArtifacts = args[++i];
+                    break;
+
                 default:
                     throw new ArgumentException(
                         $"Unknown argument '{args[i]}'.");
@@ -104,6 +110,12 @@ public static class CommandLineParser
         {
             throw new ArgumentException(
                 "--strategy is required.");
+        }
+
+        if(strategy == DeploymentStrategy.Selected && selectedArtifacts == null)
+        {
+            throw new ArgumentException(
+                "--artifacts required for strategy type - selected.");
         }
 
         if (target is null)
@@ -135,7 +147,13 @@ public static class CommandLineParser
             BaseCommit = baseCommit,
             HeadCommit = headCommit,
             ManifestPath = manifestPath ?? "deployment.manifest.yaml",
-            SettingsPath = settingsPath ?? "deployment.settings.json"
+            SettingsPath = settingsPath ?? "deployment.settings.json",
+            SelectedArtifacts = selectedArtifacts is null
+            ? Array.Empty<string>()
+            : selectedArtifacts
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim()).ToArray()
+
         };
     }
 

@@ -87,7 +87,9 @@ public sealed class App
 
         Console.WriteLine();
         Console.WriteLine($"Generating deployment plan based on {command.Strategy} artifacts...");
-        DeploymentPlan deploymentPlan = GenerateDeploymentPlan(manifest, command.Strategy, impactResult);
+        DeploymentPlan deploymentPlan = command.Strategy == DeploymentStrategy.Selected 
+        ? GenerateDeploymentPlan(manifest, command.Strategy, impactResult, command.SelectedArtifacts)
+        : GenerateDeploymentPlan(manifest, command.Strategy, impactResult);
         //ConsolePrinter.PrintDeploymentPlan(impactedPlan);
         Console.WriteLine();
         Console.WriteLine($"Building execution graph for {command.Strategy} deployment plan...");

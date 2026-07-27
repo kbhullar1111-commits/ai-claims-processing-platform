@@ -1,9 +1,40 @@
 name: Deploy
 
+# on:
+#   push:
+#     branches:
+#       - dev
+
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
+    inputs:
+
+      strategy:
+        description: Deployment strategy
+        required: true
+        default: impacted
+        type: choice
+
+        options:
+          - impacted
+          - selected
+          - full
+
+      artifacts:
+        description: Comma separated artifact names
+        required: false
+        type: string
+
+      environment:
+        description: Deployment environment
+        required: true
+        default: dev
+        type: choice
+
+        options:
+          - dev
+          - qa
+          - prod
 
 jobs:
   deploy:
@@ -14,6 +45,13 @@ jobs:
       id-token: write
 
     steps:
+
+      - name: Validate inputs
+        run: |
+          if [ "${{ inputs.strategy }}" = "selected" ] && [ -z "${{ inputs.artifacts }}" ]; then
+            echo "Selected strategy requires artifact names."
+            exit 1
+          fi
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -54,8 +92,9 @@ jobs:
           dotnet run \
             --project platform/deployment/Deployment.Platform.Console \
             -- deploy \
-            --strategy impacted \
+            --strategy ${{ inputs.strategy }} \
             --target AzureContainerApps \
-            --environment dev \
+            --environment ${{ inputs.environment }} \
             --base ${{ github.event.before }} \
-            --head ${{ github.sha }}
+            --head ${{ github.sha }} \
+            --artifacts "${{ inputs.artifacts }}"
