@@ -3,6 +3,10 @@
 A production-style cloud-native claims processing platform built to explore modern software architecture using .NET, Azure, Domain-Driven Design (DDD), Event-Driven Architecture, and cloud deployment practices.
 This repository contains a cloud-ready, event-driven claims processing platform built with .NET microservices, PostgreSQL, Azure Service Bus, and observability tooling. The solution is intended to support claim intake, document handling, fraud and payment checks, and notification workflows in a modular and extensible way.
 
+## Vision
+
+This platform is being developed as the foundation for an AI-enabled financial claims processing system. While the current implementation focuses on cloud-native architecture, distributed systems, and deployment automation, future iterations will introduce AI capabilities including intelligent document processing, fraud detection, and retrieval-augmented assistance.
+
 ## Technology Stack
 
 - .NET 10
@@ -121,3 +125,7 @@ Current capabilities include:
 - Kubernetes
 
 The platform is in an evolving implementation stage. Core service boundaries and messaging flows are in place, local runtime orchestration is available, and observability and deployment assets are being refined for a production-ready path.
+
+## Disclaimer
+
+This is a personal learning and portfolio project developed independently to explore cloud-native architecture and modern software engineering practices. It is not affiliated with or endorsed by any employer.
