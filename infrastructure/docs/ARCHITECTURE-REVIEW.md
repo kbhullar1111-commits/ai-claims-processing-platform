@@ -1,25 +1,28 @@
 # Architecture Review
 
-Generated: 2026-04-28
+Updated: 2026-07-30
 
 ## Purpose
 
-This document describes the architecture currently implemented in the workspace and highlights where runtime behavior differs by environment or feature toggle.
+This document summarizes the current architecture of the repository and captures the direction of the implementation as it stands today.
 
 ## Current Solution Shape
 
-The workspace is organized into service boundaries plus shared contracts:
+The workspace is organized around multiple service boundaries plus shared contracts and infrastructure assets:
 
-- `building-blocks/contracts`: shared integration contracts used across services.
-- `services/claims-service`: API + saga orchestration for claim lifecycle.
-- `services/document-service`: upload URL generation and document persistence/notification path.
-- `services/notification-service`: event-driven notification creation and background dispatch.
-- `services/fraud-service`: fraud-check consumer endpoint.
-- `services/payment-service`: payment-processing consumer endpoint.
-- `serverless/document-processor-function`: function-hosted document processor component.
-- `infrastructure`: compose files, scripts, and architecture docs.
+- building-blocks/contracts: shared contracts used by the services for integration events and API payloads.
+- services/claims-service: claim lifecycle API and workflow orchestration entry point.
+- services/document-service: document upload, persistence, and event-driven processing integration.
+- services/notification-service: notification creation and background dispatch.
+- services/fraud-service: fraud-check processing endpoint.
+- services/payment-service: payment-processing endpoint.
+- services/gateway-service: gateway entry point for routing and aggregation.
+- services/customer-service: customer-related domain capabilities.
+- serverless/document-processor-function: Azure Functions host for document processing scenarios.
+- platform/deployment: deployment assets and console tooling.
+- infrastructure: Docker compose runtime, migration assets, and documentation.
 
-Core services follow API/Application/Domain/Infrastructure layering.
+The application services follow a layered structure with API, Application, Domain, and Infrastructure responsibilities.
 
 ## Cloud Infrastructure (Azure)
 

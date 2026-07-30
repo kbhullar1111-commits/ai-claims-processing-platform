@@ -1,9 +1,8 @@
 # Workspace Folder Structure
 
-Generated: 2026-04-28
+Updated: 2026-07-30
 
-Curated structure view based on current code and runtime assets.
-Generated folders (`bin`, `obj`, publish output) are intentionally omitted.
+Curated structure view based on the current repository layout and runtime assets. Generated folders such as bin and obj are intentionally omitted.
 
 ```text
 .
@@ -48,24 +47,48 @@ Generated folders (`bin`, `obj`, publish output) are intentionally omitted.
 |   |   |-- ClaimsService.Application/
 |   |   |-- ClaimsService.Domain/
 |   |   `-- ClaimsService.Infrastructure/
+|   |-- customer-service/
+|   |   |-- CustomerService.slnx
+|   |   |-- CustomerService.Api/
+|   |   |-- CustomerService.Application/
+|   |   |-- CustomerService.Domain/
+|   |   `-- CustomerService.Infrastructure/
 |   |-- document-service/
 |   |   |-- DocumentService.slnx
 |   |   |-- DocumentService.API/
 |   |   |-- DocumentService.Application/
 |   |   |-- DocumentService.Domain/
 |   |   `-- DocumentService.Infrastructure/
+|   |-- fraud-service/
+|   |   |-- FraudService.slnx
+|   |   |-- FraudService.API/
+|   |   |-- FraudService.Application/
+|   |   |-- FraudService.Infrastructure/
+|   |-- gateway-service/
+|   |   |-- GatewayService.slnx
+|   |   `-- GatewayService.API/
 |   |-- notification-service/
 |   |   |-- NotificationService.slnx
 |   |   |-- NotificationService.API/
 |   |   |-- NotificationService.Application/
 |   |   |-- NotificationService.Domain/
 |   |   `-- NotificationService.Infrastructure/
-|   |-- fraud-service/
-|   |   `-- FraudService.API/
 |   `-- payment-service/
-|       `-- PaymentService.API/
+|       |-- PaymentService.slnx
+|       |-- PaymentService.API/
+|       |-- PaymentService.Application/
+|       `-- PaymentService.Infrastructure/
+|-- platform/
+|   `-- deployment/
+|       |-- Deployment.Platform.slnx
+|       |-- architecture/
+|       |-- Deployment.Platform.Application/
+|       |-- Deployment.Platform.Console/
+|       |-- Deployment.Platform.Domain/
+|       |-- Deployment.Platform.Infrastructure/
+|       `-- tests/
 `-- serverless/
-	`-- document-processor-function/
+    `-- document-processor-function/
 ```
 
 ## Notes

@@ -1,0 +1,7 @@
+**
+!services/customer-service/CustomerService.API/**
+!services/customer-service/CustomerService.Application/**
+!services/customer-service/CustomerService.Domain/**
+!services/customer-service/CustomerService.Infrastructure/**
+**/bin/**
+**/obj/**

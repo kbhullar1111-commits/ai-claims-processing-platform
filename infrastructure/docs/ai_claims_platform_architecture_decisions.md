@@ -1,7 +1,7 @@
 
 # AI Claims Processing Platform - Architecture Decision Records (ADR)
 
-Date Generated: 2026-04-28
+Updated: 2026-07-30
 
 Status Legend:
 - Implemented: reflected in current workspace code
@@ -10,7 +10,7 @@ Status Legend:
 ## System Overview
 Financial claims platform built with .NET microservices, PostgreSQL, Azure Service Bus, and OpenTelemetry/Application Insights.
 
-The local compose stack now runs only steady-state runtime dependencies in the base file. Optional observability tooling (Seq, Jaeger, Prometheus, Grafana) is enabled via overlay compose.
+The repository now includes a broader service footprint than the initial proof-of-concept, including gateway and customer services, plus deployment and serverless assets. The local compose stack continues to focus on runtime dependencies in the base file, while optional observability tooling (Seq, Jaeger, Prometheus, Grafana) is enabled via overlay compose.
 
 ---
 
@@ -185,8 +185,8 @@ Target stack remains Azure-native:
 - Azure Service Bus
 - Azure Database for PostgreSQL
 - Azure Monitor / Application Insights
-- AKS or managed container hosting
-- AI-enabled claim workflows
+- Azure Container Apps or managed container hosting
+- AI-enabled claim workflows and assisted adjudication
 
 ---
 
@@ -197,3 +197,4 @@ Planned capabilities:
 - Fraud scoring
 - Retrieval-augmented policy guidance
 - Assisted claim adjudication
+- Deployment automation and environment promotion
