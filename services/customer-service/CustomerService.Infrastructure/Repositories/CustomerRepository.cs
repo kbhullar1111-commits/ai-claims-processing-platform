@@ -22,12 +22,20 @@ public class CustomerRepository : ICustomerRepository
     public async Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
+    public async Task<Customer?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+         return await _dbContext.Customers
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Customer>> GetAllAsync(CancellationToken cancellationToken)
     {
         return await _dbContext.Customers
+            .AsNoTracking()
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync();
     }

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using CustomerService.Application;
 using CustomerService.Application.Customers.CreateCustomer;
+using CustomerService.Application.Customers.GetCustomer;
+using CustomerService.Application.Customers.GetCustomers;
 using CustomerService.Infrastructure.Repositories;
 using CustomerService.Infrastructure.Persistence;
 
@@ -49,6 +51,8 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerUnitOfWork, CustomerUnitOfWork>();
 builder.Services.AddScoped<CreateCustomerHandler>();
+builder.Services.AddScoped<GetCustomerHandler>();
+builder.Services.AddScoped<GetCustomersHandler>();
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])

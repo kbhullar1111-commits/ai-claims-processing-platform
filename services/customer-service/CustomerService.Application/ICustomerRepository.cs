@@ -12,6 +12,10 @@ public interface ICustomerRepository
         Guid id,
         CancellationToken cancellationToken);
 
+    Task<Customer?> GetByIdForUpdateAsync(
+        Guid id,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Customer>> GetAllAsync(
         CancellationToken cancellationToken);
 }
