@@ -24,6 +24,6 @@ public sealed class GetCustomerQueryHandler
                 $"Customer '{query.Id}' was not found.");
         }
 
-        CustomerResponseMapper.ToGetCustomerResponse(customer);
+        return CustomerResponseMapper.ToGetCustomerResponse(customer);
     }
 }

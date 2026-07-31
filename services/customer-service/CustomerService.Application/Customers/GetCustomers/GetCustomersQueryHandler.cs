@@ -12,7 +12,7 @@ public sealed class GetCustomersQueryHandler
         _repository = repository;
     }
 
-    public async Task<GetCustomersResponse> HandleAsync(
+    public async Task<IReadOnlyList<GetCustomersResponse>> HandleAsync(
         GetCustomersQuery query,
         CancellationToken cancellationToken)
     {

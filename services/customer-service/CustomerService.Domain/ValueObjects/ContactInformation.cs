@@ -8,7 +8,7 @@ public class ContactInformation
 
     private ContactInformation(){}
 
-    public static ContactInformation Create(string email, string phone)
+    public static ContactInformation Create(string? email, string? phone)
     {
         
         if(string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))

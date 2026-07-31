@@ -12,7 +12,7 @@ public class Address
 
     private Address(){}
 
-    public static Address Create(string line1, string line2, string city, string state, string postalCode, string country)
+    public static Address Create(string line1, string? line2, string city, string state, string postalCode, string country)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(line1);
         ArgumentException.ThrowIfNullOrWhiteSpace(city);

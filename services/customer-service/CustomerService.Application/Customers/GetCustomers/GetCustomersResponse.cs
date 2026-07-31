@@ -1,3 +1,5 @@
+using CustomerService.Domain.Enums;
+
 namespace CustomerService.Application.Customers.GetCustomers;
 
 public sealed record GetCustomersResponse(

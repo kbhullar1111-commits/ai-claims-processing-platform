@@ -56,10 +56,16 @@ public class Customer
 
     }
 
-    public void ChangeName(string firstName, string lastName)
+    private void ChangeName(string firstName, string lastName)
     {
+
         ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
         ArgumentException.ThrowIfNullOrWhiteSpace(lastName);
+
+        if (FirstName == firstName && LastName == lastName)
+        {
+            return;
+        }
 
         FirstName = firstName;
         LastName = lastName;
@@ -67,27 +73,45 @@ public class Customer
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ChangeContactInformation(ContactInformation contactInformation)
+    private void ChangeContactInformation(ContactInformation contactInformation)
     {
         ArgumentNullException.ThrowIfNull(contactInformation);
+
+        if(ContactInformation.Email ==  contactInformation.Email 
+            && ContactInformation.Phone ==  contactInformation.Phone)
+        {
+            return;
+        }
 
         ContactInformation = contactInformation;
 
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ChangePrimaryAddress(Address address)
+    private void ChangePrimaryAddress(Address address)
     {
         ArgumentNullException.ThrowIfNull(address);
+
+        if (PrimaryAddress.Line1 == address.Line1 &&
+            PrimaryAddress.Line2 == address.Line2 &&
+            PrimaryAddress.City == address.City &&
+            PrimaryAddress.State == address.State &&
+            PrimaryAddress.PostalCode == address.PostalCode &&
+            PrimaryAddress.Country == address.Country)
+        {
+            return;
+        }
 
         PrimaryAddress = address;
 
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ChangePreferredCommunication(
+    private void ChangePreferredCommunication(
     CommunicationPreference preference)
     {
+        if(PreferredCommunication == preference) return;
+
         if (preference == CommunicationPreference.Email &&
             string.IsNullOrWhiteSpace(ContactInformation.Email))
         {
@@ -109,6 +133,8 @@ public class Customer
 
     public void Suspend()
     {
+        if(Status == CustomerStatus.Suspended) return;
+
         if (Status == CustomerStatus.Inactive)
         {
             throw new InvalidOperationException(
@@ -132,6 +158,9 @@ public class Customer
 
     public void Reactivate()
     {
+        if (Status == CustomerStatus.Active)
+            return;
+
         if (Status != CustomerStatus.Suspended)
         {
             throw new InvalidOperationException(
@@ -141,6 +170,34 @@ public class Customer
         Status = CustomerStatus.Active;
 
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateProfile(
+        string firstName,
+        string lastName,
+        ContactInformation contactInformation,
+        Address address,
+        CommunicationPreference preferredCommunication,
+        CustomerStatus status
+    )
+    {
+
+        ChangeName(firstName, lastName);
+        ChangeContactInformation(contactInformation);
+        ChangePrimaryAddress(address);
+        ChangePreferredCommunication(preferredCommunication);
+        switch (status)
+        {
+            case CustomerStatus.Suspended:
+                Suspend();
+                break;
+            case CustomerStatus.Inactive:
+                Deactivate();
+                break;
+            case CustomerStatus.Active:
+                Reactivate();
+                break;
+        }
     }
 
 

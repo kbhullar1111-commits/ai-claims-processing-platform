@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using CustomerService.API.Models;
 using CustomerService.Application.Customers.CreateCustomer;
+using CustomerService.Application.Customers.GetCustomer;
+using CustomerService.Application.Customers.GetCustomers;
+using CustomerService.Application.Customers.UpdateCustomer;
 
 namespace CustomerService.API.Controllers;
 
@@ -12,17 +15,20 @@ namespace CustomerService.API.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly CreateCustomerHandler _createCustomerHandler;
-    private readonly GetCustomerHandler _getCustomerHandler;
-    private readonly GetCustomersHandler _getCustomersHandler;
+    private readonly GetCustomerQueryHandler _getCustomerHandler;
+    private readonly GetCustomersQueryHandler _getCustomersHandler;
+    private readonly UpdateCustomerHandler _updateCustomerHandler;
 
     public CustomersController(
         CreateCustomerHandler createCustomerHandler,
-        GetCustomerHandler getCustomerHandler,
-        GetCustomersHandler getCustomersHandler)
+        GetCustomerQueryHandler getCustomerHandler,
+        GetCustomersQueryHandler getCustomersHandler,
+        UpdateCustomerHandler updateCustomerHandler)
     {
         _createCustomerHandler = createCustomerHandler;
         _getCustomerHandler = getCustomerHandler;
         _getCustomersHandler = getCustomersHandler;
+        _updateCustomerHandler = updateCustomerHandler;
     }
 
     [HttpPost]
@@ -74,6 +80,34 @@ public class CustomersController : ControllerBase
 
         var response = await _getCustomerHandler.HandleAsync(
             query,
+            cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPut("{customerId:guid}")]
+    public async Task<IActionResult> UpdateCustomer(
+        Guid customerId,
+        UpdateCustomerRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateCustomerCommand(
+            customerId,
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            request.Phone,
+            request.AddressLine1,
+            request.AddressLine2,
+            request.City,
+            request.State,
+            request.PostalCode,
+            request.Country,
+            request.PreferredCommunication,
+            request.Status);
+
+        var response = await _updateCustomerHandler.HandleAsync(
+            command,
             cancellationToken);
 
         return Ok(response);

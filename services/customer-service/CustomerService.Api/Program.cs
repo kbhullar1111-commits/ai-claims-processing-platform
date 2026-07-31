@@ -7,6 +7,7 @@ using CustomerService.Application;
 using CustomerService.Application.Customers.CreateCustomer;
 using CustomerService.Application.Customers.GetCustomer;
 using CustomerService.Application.Customers.GetCustomers;
+using CustomerService.Application.Customers.UpdateCustomer;
 using CustomerService.Infrastructure.Repositories;
 using CustomerService.Infrastructure.Persistence;
 
@@ -51,8 +52,9 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerUnitOfWork, CustomerUnitOfWork>();
 builder.Services.AddScoped<CreateCustomerHandler>();
-builder.Services.AddScoped<GetCustomerHandler>();
-builder.Services.AddScoped<GetCustomersHandler>();
+builder.Services.AddScoped<GetCustomerQueryHandler>();
+builder.Services.AddScoped<GetCustomersQueryHandler>();
+builder.Services.AddScoped<UpdateCustomerHandler>();
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
