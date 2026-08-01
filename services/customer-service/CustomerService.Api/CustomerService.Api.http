@@ -1,6 +1,0 @@
-@CustomerService.Api_HostAddress = http://localhost:5233
-
-GET {{CustomerService.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
