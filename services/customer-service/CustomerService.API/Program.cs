@@ -2,6 +2,7 @@ extern alias azureidentity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using Npgsql;
 using CustomerService.Application;
 using CustomerService.Application.Customers.CreateCustomer;
