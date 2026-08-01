@@ -5,10 +5,10 @@ This file contains Azure Container Apps deployment commands for the services in 
 ## 1) Shared variables
 
 ```cmd
-set RG=rg-ai-claims-dev
-set ACR_NAME=aiclaimsacr
-set ACR_SERVER=aiclaimsacr.azurecr.io
-set ACA_ENV=aiclaims-aca-env
+set RG=rg-name
+set ACR_NAME=acrname
+set ACR_SERVER=acrservername
+set ACA_ENV=aca-env
 set TAG=v1
 set CLAIMS_DB_CONNECTION_STRING=Host=...;Database=claimsdb;Username=...;Password=...
 set NOTIFICATION_DB_CONNECTION_STRING=Host=...;Database=notificationdb;Username=...;Password=...
