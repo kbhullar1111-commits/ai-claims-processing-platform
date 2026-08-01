@@ -71,7 +71,6 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddHttpContextAccessor();
 
-
 var app = builder.Build();
 
 app.UseSwagger();
