@@ -83,6 +83,18 @@ artifacts:
       - PaymentService.API/obj
       - PaymentService.API/bin
 
+  - name: customer-service
+    type: api
+    root: services/customer-service
+    entryPoint: services/customer-service/CustomerService.API
+    dockerfile: services/customer-service/CustomerService.API/Dockerfile
+
+    dependencies: []
+    ignoredPaths:
+      - CustomerService.API/Properties
+      - CustomerService.API/obj
+      - CustomerService.API/bin
+
   # Will work on fucntion app deployment automation later
   # - name: document-processor
   #   type: function

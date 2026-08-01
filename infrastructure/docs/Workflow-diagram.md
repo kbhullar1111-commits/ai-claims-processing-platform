@@ -1,8 +1,8 @@
 # Workflow Diagram
 
-Generated: 2026-04-28
+Updated: 2026-07-30
 
-## Primary Workflow (Azure Service Bus)
+## Primary Workflow (Event-Driven Processing)
 
 ```mermaid
 flowchart TD
