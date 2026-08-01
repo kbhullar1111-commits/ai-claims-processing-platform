@@ -62,9 +62,16 @@ builder.Services.AddHealthChecks()
 
 builder.Services.AddControllers();
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddHttpContextAccessor();
 
+
 var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
