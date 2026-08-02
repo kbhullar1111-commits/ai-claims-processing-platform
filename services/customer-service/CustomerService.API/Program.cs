@@ -1,9 +1,18 @@
 extern alias azureidentity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using Npgsql;
+using Serilog;
+using Serilog.Events;
+using Serilog.Enrichers.Span;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using CustomerService.Application;
 using CustomerService.Application.Customers.CreateCustomer;
 using CustomerService.Application.Customers.GetCustomer;
@@ -33,6 +42,20 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     }
 }
 
+var appInsightsConnectionString =
+    builder.Configuration["ApplicationInsights:ConnectionString"];
+
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Application Insights connection string.");
+}
+
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = appInsightsConnectionString;
+});
+
 var postgresConnectionString = builder.Configuration.GetConnectionString("CustomerPostgres")
     ?? throw new InvalidOperationException("Connection string 'CustomerPostgres' is required.");
 
@@ -48,6 +71,65 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
         {
             npgsql.MigrationsAssembly("CustomerService.Infrastructure");
         });
+});
+
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields =
+        HttpLoggingFields.RequestMethod |
+        HttpLoggingFields.RequestPath |
+        HttpLoggingFields.ResponseStatusCode |
+        HttpLoggingFields.Duration;
+});
+
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.WithSpan()
+        .Enrich.WithProperty("Application", "CustomerService.API")
+        .Enrich.WithProperty("Service", "customer-service")
+        .WriteTo.Console()
+        .WriteTo.ApplicationInsights(
+            services.GetRequiredService<
+                Microsoft.ApplicationInsights.TelemetryClient>(),
+            TelemetryConverter.Traces);
+});
+
+var traceSampleRatio =
+    builder.Configuration.GetValue<double?>(
+        "Observability:Tracing:SampleRatio") ?? 1.0;
+
+builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    })
+    .WithTracing(tracerProvider =>
+    {
+        tracerProvider
+            .SetSampler(
+                new ParentBasedSampler(
+                    new TraceIdRatioBasedSampler(traceSampleRatio)))
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.Filter = context =>
+                    !context.Request.Path.StartsWithSegments("/health") &&
+                    !context.Request.Path.StartsWithSegments("/live") &&
+                    !context.Request.Path.StartsWithSegments("/ready");
+            })
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService(
+                        serviceName: "CustomerService",
+                        serviceVersion: "1.0.0"));
 });
 
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
@@ -76,6 +158,15 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto
+});
+
+app.UseHttpLogging();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions

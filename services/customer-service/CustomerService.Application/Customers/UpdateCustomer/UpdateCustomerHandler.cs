@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using CustomerService.Domain.Enums;
 using CustomerService.Domain.Entities;
 using CustomerService.Domain.ValueObjects;
@@ -10,13 +11,16 @@ public sealed class UpdateCustomerHandler
 {
     private readonly ICustomerRepository _repository;
     private readonly ICustomerUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateCustomerHandler> _logger;
 
     public UpdateCustomerHandler(
         ICustomerRepository repository,
-        ICustomerUnitOfWork unitOfWork)
+        ICustomerUnitOfWork unitOfWork,
+        ILogger<UpdateCustomerHandler> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<UpdateCustomerResponse> HandleAsync(
@@ -54,6 +58,9 @@ public sealed class UpdateCustomerHandler
             command.Status);
 
         await _unitOfWork.CommitAsync(cancellationToken);
+
+        _logger.LogInformation("Updated customer id: {CustomerId} Name: {CustomerName}",
+            command.CustomerId, customer.FirstName + " " + customer.LastName);
 
         return new UpdateCustomerResponse(command.CustomerId);
     }

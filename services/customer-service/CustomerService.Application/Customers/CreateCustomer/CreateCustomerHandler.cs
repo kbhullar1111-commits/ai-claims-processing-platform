@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using CustomerService.Domain.Enums;
 using CustomerService.Domain.Entities;
 using CustomerService.Domain.ValueObjects;
@@ -10,13 +11,16 @@ public sealed class CreateCustomerHandler
 {
     private readonly ICustomerRepository _repository;
     private readonly ICustomerUnitOfWork _unitOfWork;
+    private readonly ILogger<CreateCustomerHandler> _logger;
 
     public CreateCustomerHandler(
         ICustomerRepository repository,
-        ICustomerUnitOfWork unitOfWork)
+        ICustomerUnitOfWork unitOfWork,
+        ILogger<CreateCustomerHandler> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<CreateCustomerResponse> HandleAsync(
@@ -48,6 +52,9 @@ public sealed class CreateCustomerHandler
         await _repository.AddAsync(customer, cancellationToken);
 
         await _unitOfWork.CommitAsync(cancellationToken);
+
+        _logger.LogInformation("Created customer id: {CustomerId} Name: {CustomerName}",
+         customer.Id, customer.FirstName + " " + customer.LastName);
 
         return new CreateCustomerResponse(customer.Id);
     }
