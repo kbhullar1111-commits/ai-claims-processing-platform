@@ -13,6 +13,7 @@ artifacts:
     dependencies:
       - services/claims-service/ClaimsService.API
       - services/document-service/DocumentService.API
+      - services/customer-service/CustomerService.API
     ignoredPaths:
       - GatewayService.API/Properties
       - GatewayService.API/obj
