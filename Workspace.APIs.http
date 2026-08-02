@@ -1,5 +1,9 @@
 @gatewayHost = https://localhost:7063
+
 @claimsApi = {{gatewayHost}}/api/claims
+
+@customerApi = {{gatewayHost}}/api/customers
+
 @notificationHost = http://localhost:5002
 
 @documentApi = {{gatewayHost}}/api/documents
@@ -153,6 +157,82 @@ x-ms-blob-type: BlockBlob
 ### Document Swagger JSON (development)
 GET {{gatewayHost}}/api/documents/swagger/v1/swagger.json
 Accept: application/json
+
+### =====================
+### Customer Service
+### =====================
+
+### =====================
+### Customer Service
+### =====================
+
+### Create Customer
+# @name createCustomer
+POST {{customerApi}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "dateOfBirth": "1992-05-15",
+  "email": "john.doe@example.com",
+  "phone": "+919876543210",
+  "addressLine1": "123 Main Street",
+  "addressLine2": "Apartment 201",
+  "city": "Bengaluru",
+  "state": "Karnataka",
+  "postalCode": "560001",
+  "country": "India",
+  "preferredCommunication": "Email"
+}
+
+###
+
+@customerId={{createCustomer.response.body.$.customerId}}
+
+### Get All Customers
+
+GET {{customerApi}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Get Customer
+
+GET {{customerApi}}/{{customerId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Update Customer
+
+PUT {{customerApi}}/{{customerId}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.updated@example.com",
+  "phone": "+919999999999",
+  "addressLine1": "456 MG Road",
+  "addressLine2": "Suite 302",
+  "city": "Bengaluru",
+  "state": "Karnataka",
+  "postalCode": "560001",
+  "country": "India",
+  "preferredCommunication": "Phone",
+  "status": "Active"
+}
+
+###
+
+
 
 ### =====================
 ### Notification Service
