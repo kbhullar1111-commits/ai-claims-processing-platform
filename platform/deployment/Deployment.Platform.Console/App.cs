@@ -43,7 +43,7 @@ public sealed class App
         _repositoryLocator = repositoryLocator;
     }
 
-    public async Task RunAsync(DeploymentCommand command)
+    public async Task<DeploymentExecutionResult> RunAsync(DeploymentCommand command)
     {
         Console.WriteLine("Deployment Platform");
         Console.WriteLine("-------------------");
@@ -81,7 +81,12 @@ public sealed class App
             if (impactResult.Artifacts.Count == 0)
             {
                 Console.WriteLine("No impacted artifacts found. Nothing to deploy.");
-                return;
+                return new DeploymentExecutionResult { 
+                    StartedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow,
+                    StageResults = new List<StageExecutionResult>(),
+                    Successful = true
+                };
             }
             // ConsolePrinter.PrintImpactAnalysisResult(impactResult);
         }
@@ -114,6 +119,8 @@ public sealed class App
         Console.WriteLine("Executing the deployment plan...");
         var deploymentExecutionResult =  await _deploymentExecutor.ExecuteAsync(deploymentExecutionRequest);
         ConsolePrinter.PrintDeploymentExecutionResult(deploymentExecutionResult);
+        
+        return deploymentExecutionResult;
 
     }
 

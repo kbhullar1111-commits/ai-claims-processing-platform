@@ -69,7 +69,8 @@ builder.ConfigureServices(services =>
 
 var host = builder.Build();
 
-
-await host.Services
+var result = await host.Services
     .GetRequiredService<App>()
     .RunAsync(command);
+
+Environment.ExitCode = result.Successful ? 0 : 1;
