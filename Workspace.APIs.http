@@ -190,7 +190,8 @@ Authorization: Bearer {{token}}
 
 ###
 
-@customerId={{createCustomer.response.body.$.customerId}}
+# @customerId={{createCustomer.response.body.$.customerId}}
+@customerId=8eabb35d-8adc-435a-a629-9606b4a7815e
 
 ### Get All Customers
 
@@ -217,17 +218,17 @@ Authorization: Bearer {{token}}
 
 {
   "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.updated@example.com",
-  "phone": "+919999999999",
-  "addressLine1": "456 MG Road",
-  "addressLine2": "Suite 302",
+  "lastName": "Smith",
+  "email": "john.smith@example.com",
+  "phone": "+919800000001",
+  "addressLine1": "101 MG Road",
+  "addressLine2": "",
   "city": "Bengaluru",
   "state": "Karnataka",
   "postalCode": "560001",
   "country": "India",
-  "preferredCommunication": "Phone",
-  "status": "Active"
+  "preferredCommunication": "Email",
+  "status": "Active",
 }
 
 ###
