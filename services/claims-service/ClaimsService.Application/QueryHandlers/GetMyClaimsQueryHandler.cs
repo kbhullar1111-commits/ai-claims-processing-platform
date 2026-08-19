@@ -10,24 +10,26 @@ public sealed class GetMyClaimsQueryHandler
 {
     private readonly IClaimRepository _claimRepository;
     private readonly ICurrentUser _currentUser;
-    private readonly ICustomerResolver _customerResolver;
+    private readonly ICustomerClient _customerClient;
 
     public GetMyClaimsQueryHandler(
         IClaimRepository claimRepository,
         ICurrentUser currentUser,
-        ICustomerResolver customerResolver)
+        ICustomerClient customerClient)
     {
         _claimRepository = claimRepository;
         _currentUser = currentUser;
-        _customerResolver = customerResolver;
+        _customerClient = customerClient;
     }
 
     public async Task<IReadOnlyList<ClaimSummaryDto>> Handle(
         GetMyClaimsQuery request,
         CancellationToken cancellationToken)
     {
-        var customer =
-            _customerResolver.Resolve(_currentUser.UserId!);
+
+        var customer = await _customerClient.GetByEmailAsync(
+        _currentUser.Email!,
+        cancellationToken);
 
         var claims = await _claimRepository.GetByCustomerIdAsync(
             customer.CustomerId);

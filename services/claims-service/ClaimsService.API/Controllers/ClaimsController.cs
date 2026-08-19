@@ -16,14 +16,14 @@ public class ClaimsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ICurrentUser _currentUser;
-    private readonly ICustomerResolver _customerResolver;
+    private readonly ICustomerClient _customerClient;
     private readonly ILogger<ClaimsController> _logger;
 
-    public ClaimsController(IMediator mediator, ICurrentUser currentUser, ICustomerResolver customerResolver, ILogger<ClaimsController> logger)
+    public ClaimsController(IMediator mediator, ICurrentUser currentUser, ICustomerClient customerClient, ILogger<ClaimsController> logger)
     {
         _mediator = mediator;
         _currentUser = currentUser;
-        _customerResolver = customerResolver;
+        _customerClient = customerClient;
         _logger = logger;
     }
 
@@ -31,12 +31,21 @@ public class ClaimsController : ControllerBase
     /// Submits a new claim.
     /// </summary>
     /// <param name="request">Claim submission request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Created claim identifier.</returns>
     [HttpPost]
-    public async Task<IActionResult> SubmitClaim(SubmitClaimRequest request)
+    public async Task<IActionResult> SubmitClaim(SubmitClaimRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Submitting claim for user: {UserId}, email: {Email}, name: {Name}", _currentUser.UserId, _currentUser.Email, _currentUser.Name);
-        var customer = _customerResolver.Resolve( _currentUser.UserId!);
+        var customer = await _customerClient.GetByEmailAsync(
+        _currentUser.Email!, cancellationToken);
+
+        if (customer == null)
+        {
+            _logger.LogWarning("Customer not found for email: {Email}", _currentUser.Email);
+            return NotFound(new { Message = "Customer not found." });
+        }
+
 
         var command = new SubmitClaimCommand(
             customer.CustomerId,

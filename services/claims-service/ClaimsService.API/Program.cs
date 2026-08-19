@@ -252,12 +252,17 @@ builder.Services.AddMassTransit(x =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddSingleton<ICustomerResolver, StaticCustomerResolver>();
 
 builder.Services.AddScoped<IClaimRepository, ClaimRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddSingleton<IClaimsMetrics, ClaimsMetrics>();
+
+builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:CustomerService:BaseUrl"]!);
+});
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
