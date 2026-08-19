@@ -96,7 +96,7 @@ public class CustomersController : ControllerBase
             query,
             cancellationToken);
 
-        return Ok(response);
+        return Ok(new { response.CustomerId, response.Status, response.FirstName, response.LastName, response.Email });
     }
 
     [HttpPut("{customerId:guid}")]
