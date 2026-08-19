@@ -1,3 +1,4 @@
+using CustomerService.Domain.Entities;
 using CustomerService.Application.Customers.Mappings;
 
 namespace CustomerService.Application.Customers.GetCustomer;

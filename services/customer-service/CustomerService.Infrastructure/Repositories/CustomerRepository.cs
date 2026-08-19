@@ -30,7 +30,7 @@ public class CustomerRepository : ICustomerRepository
     {
         return await _dbContext.Customers
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Email == email, cancellationToken);
+            .FirstOrDefaultAsync(c => c.ContactInformation.Email == email, cancellationToken);
     }
 
     public async Task<Customer?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
