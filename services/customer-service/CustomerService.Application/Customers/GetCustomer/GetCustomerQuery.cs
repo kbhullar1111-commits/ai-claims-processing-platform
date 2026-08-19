@@ -1,3 +1,5 @@
 namespace CustomerService.Application.Customers.GetCustomer;
 
-public sealed record GetCustomerQuery(Guid Id);
+public sealed record GetCustomerQuery(
+    Guid? Id = null,
+    string? Email = null);

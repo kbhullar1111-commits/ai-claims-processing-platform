@@ -76,7 +76,21 @@ public class CustomersController : ControllerBase
         Guid customerId,
         CancellationToken cancellationToken)
     {
-        var query = new GetCustomerQuery(customerId);
+        var query = new GetCustomerQuery(customerId, null);
+
+        var response = await _getCustomerHandler.HandleAsync(
+            query,
+            cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("/customers/by-email/{email}")]
+    public async Task<IActionResult> GetCustomerByEmail(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetCustomerByEmailQuery(null, email);
 
         var response = await _getCustomerHandler.HandleAsync(
             query,

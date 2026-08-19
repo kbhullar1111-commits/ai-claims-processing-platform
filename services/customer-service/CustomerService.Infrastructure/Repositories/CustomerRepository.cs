@@ -26,6 +26,13 @@ public class CustomerRepository : ICustomerRepository
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
+    public async Task<Customer?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Email == email, cancellationToken);
+    }
+
     public async Task<Customer?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
     {
          return await _dbContext.Customers

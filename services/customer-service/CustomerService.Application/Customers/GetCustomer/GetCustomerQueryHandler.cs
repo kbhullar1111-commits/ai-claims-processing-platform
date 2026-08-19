@@ -16,12 +16,29 @@ public sealed class GetCustomerQueryHandler
         GetCustomerQuery query,
         CancellationToken cancellationToken)
     {
-        var customer = await _repository.GetByIdAsync(query.Id, cancellationToken);
+        Customer? customer;
+
+        if (query.Id.HasValue)
+        {
+            customer = await _repository.GetByIdAsync(
+                query.Id.Value,
+                cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(query.Email))
+        {
+            customer = await _repository.GetByEmailAsync(
+                query.Email,
+                cancellationToken);
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Either Customer Id or Email must be provided.");
+        }
 
         if (customer is null)
         {
-            throw new KeyNotFoundException(
-                $"Customer '{query.Id}' was not found.");
+            throw new KeyNotFoundException("Customer was not found.");
         }
 
         return CustomerResponseMapper.ToGetCustomerResponse(customer);

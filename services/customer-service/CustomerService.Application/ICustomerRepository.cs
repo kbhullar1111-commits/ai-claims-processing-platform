@@ -12,6 +12,10 @@ public interface ICustomerRepository
         Guid id,
         CancellationToken cancellationToken);
 
+    Task<Customer?> GetByEmailAsync(
+        string email,
+        CancellationToken cancellationToken);
+
     Task<Customer?> GetByIdForUpdateAsync(
         Guid id,
         CancellationToken cancellationToken);

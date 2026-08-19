@@ -209,6 +209,14 @@ Authorization: Bearer {{token}}
 
 ###
 
+### Get Customer by Email
+
+GET {{customerApi}}/by-email/{email}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
 ### Update Customer
 
 PUT {{customerApi}}/{{customerId}}
