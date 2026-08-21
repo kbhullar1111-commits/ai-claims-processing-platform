@@ -36,6 +36,12 @@ public class ClaimsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> SubmitClaim(SubmitClaimRequest request, CancellationToken cancellationToken)
     {
+        if(string.IsNullOrEmpty(_currentUser.Email))
+        {
+            _logger.LogWarning("Current user email is null or empty.");
+            return BadRequest(new { Message = "User email is required." });
+        }
+        
         _logger.LogInformation("Submitting claim for user: {UserId}, email: {Email}, name: {Name}", _currentUser.UserId, _currentUser.Email, _currentUser.Name);
         var customer = await _customerClient.GetByEmailAsync(
         _currentUser.Email!, cancellationToken);
