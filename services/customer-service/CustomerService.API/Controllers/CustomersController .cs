@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using CustomerService.API.Models;
 using CustomerService.Application.Customers.CreateCustomer;
 using CustomerService.Application.Customers.GetCustomer;
@@ -10,6 +11,7 @@ namespace CustomerService.API.Controllers;
 /// <summary>
 /// Handles customer submission endpoints.
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("customers")]
 public class CustomersController : ControllerBase

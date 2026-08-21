@@ -13,6 +13,8 @@ using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Identity.Web;
 using CustomerService.Application;
 using CustomerService.Application.Customers.CreateCustomer;
 using CustomerService.Application.Customers.GetCustomer;
@@ -154,6 +156,14 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddHttpContextAccessor();
 
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(
+        builder.Configuration,
+        "AzureAd");
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -167,6 +177,9 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 app.UseHttpLogging();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
