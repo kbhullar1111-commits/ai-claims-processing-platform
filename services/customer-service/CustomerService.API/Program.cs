@@ -162,6 +162,35 @@ builder.Services
         builder.Configuration,
         "AzureAd");
 
+builder.Services.Configure<JwtBearerOptions>(
+    JwtBearerDefaults.AuthenticationScheme,
+    options =>
+    {
+        options.Events ??= new JwtBearerEvents();
+
+        options.Events.OnTokenValidated = context =>
+        {
+            var logger = context.HttpContext
+                .RequestServices
+                .GetRequiredService<ILogger<Program>>();
+
+            var claims = context.Principal?.Claims
+                .Where(c =>
+                    c.Type == "aud" ||
+                    c.Type == "appid" ||
+                    c.Type == "azp" ||
+                    c.Type == "oid" ||
+                    c.Type == "roles")
+                .Select(c => $"{c.Type}={c.Value}");
+
+            logger.LogInformation(
+                "Customer Service token validated. Claims: {Claims}",
+                string.Join(", ", claims ?? []));
+            
+            return Task.CompletedTask;
+        };
+    });
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("CustomerServiceAccess", policy =>
