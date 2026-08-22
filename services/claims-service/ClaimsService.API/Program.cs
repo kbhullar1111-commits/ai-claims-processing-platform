@@ -268,6 +268,7 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["Services:CustomerService:BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(5);
 })
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>();
 

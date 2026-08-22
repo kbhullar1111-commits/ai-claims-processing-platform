@@ -19,6 +19,8 @@ public sealed class GetCustomerQueryHandler
     {
         Customer? customer;
 
+        await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+
         if (query.Id.HasValue)
         {
             customer = await _repository.GetByIdAsync(
