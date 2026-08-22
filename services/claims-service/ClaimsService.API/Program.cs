@@ -1,4 +1,5 @@
-extern alias azureidentity;
+using Azure.Core;
+using Azure.Identity;
 
 using ClaimsService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,7 @@ if (!string.IsNullOrEmpty(keyVaultEndpoint))
     {
         builder.Configuration.AddAzureKeyVault(
             new Uri(keyVaultEndpoint),
-            new azureidentity::Azure.Identity.DefaultAzureCredential());
+            new DefaultAzureCredential());
 
         builder.Configuration.AddEnvironmentVariables();
     }
@@ -258,11 +259,17 @@ builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddSingleton<IClaimsMetrics, ClaimsMetrics>();
 
+builder.Services.AddSingleton<TokenCredential>(
+    new ManagedIdentityCredential(new ManagedIdentityCredentialOptions()));
+
+builder.Services.AddTransient<CustomerServiceAuthenticationHandler>();
+
 builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["Services:CustomerService:BaseUrl"]!);
-});
+})
+.AddHttpMessageHandler<CustomerServiceAuthenticationHandler>();
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()

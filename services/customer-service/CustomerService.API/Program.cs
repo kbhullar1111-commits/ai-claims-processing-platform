@@ -162,7 +162,13 @@ builder.Services
         builder.Configuration,
         "AzureAd");
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CustomerServiceAccess", policy =>
+    {
+        policy.RequireClaim("roles", "customer.readwrite");
+    });
+});
 
 var app = builder.Build();
 

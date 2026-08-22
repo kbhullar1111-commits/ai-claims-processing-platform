@@ -11,7 +11,7 @@ namespace CustomerService.API.Controllers;
 /// <summary>
 /// Handles customer submission endpoints.
 /// </summary>
-[Authorize]
+[Authorize(Policy = "CustomerServiceAccess")]
 [ApiController]
 [Route("customers")]
 public class CustomersController : ControllerBase
