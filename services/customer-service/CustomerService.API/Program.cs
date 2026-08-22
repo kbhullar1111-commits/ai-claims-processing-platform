@@ -162,41 +162,11 @@ builder.Services
         builder.Configuration,
         "AzureAd");
 
-builder.Services.Configure<JwtBearerOptions>(
-    JwtBearerDefaults.AuthenticationScheme,
-    options =>
-    {
-        options.Events ??= new JwtBearerEvents();
-
-        options.Events.OnTokenValidated = context =>
-        {
-            var logger = context.HttpContext
-                .RequestServices
-                .GetRequiredService<ILogger<Program>>();
-
-            var principal = context.Principal;
-
-            var roles = principal?.Claims
-                .Where(c => c.Type.Contains("role", StringComparison.OrdinalIgnoreCase))
-                .Select(c => $"{c.Type}={c.Value}")
-                .ToList();
-
-            logger.LogInformation(
-                "Customer Service token validated. IsAuthenticated={IsAuthenticated}, " +
-                "IsInCustomerReadWriteRole={IsInRole}, Roles={Roles}",
-                principal?.Identity?.IsAuthenticated,
-                principal?.IsInRole("customer.readwrite"),
-                string.Join(", ", roles ?? []));
-
-            return Task.CompletedTask;
-        };
-    });
-
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("CustomerServiceAccess", policy =>
     {
-        policy.RequireClaim("roles", "customer.readwrite");
+        policy.RequireRole("customer.readwrite");
     });
 });
 
