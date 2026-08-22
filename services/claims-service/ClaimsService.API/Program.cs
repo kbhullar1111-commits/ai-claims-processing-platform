@@ -316,6 +316,8 @@ await EnsureDatabaseIsReachableAsync(app.Services);
     app.UseSwaggerUI();
 // }
 
+app.UseExceptionHandler();
+
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
 {
