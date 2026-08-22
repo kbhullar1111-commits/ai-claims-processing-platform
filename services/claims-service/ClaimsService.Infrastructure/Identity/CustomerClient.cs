@@ -21,19 +21,28 @@ public sealed class CustomerClient : ICustomerClient
         string email,
         CancellationToken cancellationToken)
     {
-        var response = await _httpClient.GetAsync(
-            $"customers/by-email/{Uri.EscapeDataString(email)}",
-            cancellationToken);
- 
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content
-            .ReadFromJsonAsync<CustomerContext>(
+        try{
+            var response = await _httpClient.GetAsync(
+                $"customers/by-email/{Uri.EscapeDataString(email)}",
                 cancellationToken);
+    
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content
+                .ReadFromJsonAsync<CustomerContext>(
+                    cancellationToken);
+        }
+        catch (TaskCanceledException ex)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new CustomerServiceTimeoutException(
+                "The request to the Customer Service timed out.",
+                ex);
+        }
     }
 }
