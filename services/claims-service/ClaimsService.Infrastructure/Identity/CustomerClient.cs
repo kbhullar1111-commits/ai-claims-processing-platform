@@ -40,7 +40,7 @@ public sealed class CustomerClient : ICustomerClient
         catch (TaskCanceledException ex)
             when (!cancellationToken.IsCancellationRequested)
         {
-            throw new CustomerServiceTimeoutException(
+            throw new TimeoutException(
                 "The request to the Customer Service timed out.",
                 ex);
         }
