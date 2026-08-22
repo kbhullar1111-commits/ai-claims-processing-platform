@@ -31,6 +31,11 @@ public sealed class GetMyClaimsQueryHandler
         _currentUser.Email!,
         cancellationToken);
 
+        if (customer == null)
+        {
+            return [];
+        }
+
         var claims = await _claimRepository.GetByCustomerIdAsync(
             customer.CustomerId);
 

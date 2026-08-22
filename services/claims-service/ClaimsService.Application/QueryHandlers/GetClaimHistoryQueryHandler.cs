@@ -39,6 +39,11 @@ public sealed class GetClaimHistoryQueryHandler
             return null;
         }
 
+        if (customer == null)
+        {
+            return null;
+        }
+
         if (claim.CustomerId != customer.CustomerId)
         {
             return null;

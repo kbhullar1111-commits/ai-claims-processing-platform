@@ -272,6 +272,8 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 })
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>();
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
     .UseAzureMonitor(options =>
