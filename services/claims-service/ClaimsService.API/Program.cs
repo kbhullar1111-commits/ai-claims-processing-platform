@@ -86,6 +86,8 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
         .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
         .MinimumLevel.Override("MassTransit", LogEventLevel.Warning)
         .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.Identity.Client", LogEventLevel.Warning)
+        .MinimumLevel.Override("Azure.Identity", LogEventLevel.Warning)
         .Enrich.FromLogContext()
         .Enrich.WithSpan()
         .Enrich.WithProperty("Application", "ClaimsService.API")
@@ -272,8 +274,6 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 })
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>();
 
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
     .UseAzureMonitor(options =>
@@ -315,8 +315,6 @@ await EnsureDatabaseIsReachableAsync(app.Services);
     app.UseSwagger();
     app.UseSwaggerUI();
 // }
-
-app.UseExceptionHandler();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/live", new HealthCheckOptions
