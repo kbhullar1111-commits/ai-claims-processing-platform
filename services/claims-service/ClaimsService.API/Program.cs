@@ -32,6 +32,8 @@ using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -272,7 +274,20 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
         builder.Configuration["Services:CustomerService:BaseUrl"]!);
     client.Timeout = TimeSpan.FromSeconds(5);
 })
-.AddHttpMessageHandler<CustomerServiceAuthenticationHandler>();
+.AddHttpMessageHandler<CustomerServiceAuthenticationHandler>()
+.AddResilienceHandler(
+    "CustomerServiceRetry",
+    static pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            Delay = TimeSpan.FromMilliseconds(200),
+            ShouldRetryAfterHeader = true
+        });
+    });
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
