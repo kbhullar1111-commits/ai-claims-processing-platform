@@ -20,7 +20,6 @@ public class CustomersController : ControllerBase
     private readonly GetCustomerQueryHandler _getCustomerHandler;
     private readonly GetCustomersQueryHandler _getCustomersHandler;
     private readonly UpdateCustomerHandler _updateCustomerHandler;
-    private static int _byEmailAttempts;
 
     public CustomersController(
         CreateCustomerHandler createCustomerHandler,
@@ -93,12 +92,7 @@ public class CustomersController : ControllerBase
         string email,
         CancellationToken cancellationToken)
     {
-        var attempt = Interlocked.Increment(ref _byEmailAttempts);
 
-        if (attempt <= 2)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable);
-        }
         var query = new GetCustomerQuery(null, email);
 
         var response = await _getCustomerHandler.HandleAsync(
