@@ -275,17 +275,26 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 })
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>()
 .AddResilienceHandler(
-    "CustomerServiceRetry",
+    "CustomerServiceResilience",
     static pipeline =>
     {
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,
+            MinimumThroughput = 4,
+            SamplingDuration = TimeSpan.FromSeconds(10),
+            BreakDuration = TimeSpan.FromSeconds(20)
+        });
+
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
             Delay = TimeSpan.FromMilliseconds(200),
-            ShouldRetryAfterHeader = true,
+            ShouldRetryAfterHeader = true
         });
+
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });
 
