@@ -272,7 +272,6 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["Services:CustomerService:BaseUrl"]!);
-    client.Timeout = TimeSpan.FromSeconds(5);
 })
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>()
 .AddResilienceHandler(
@@ -285,8 +284,9 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
             Delay = TimeSpan.FromMilliseconds(200),
-            ShouldRetryAfterHeader = true
+            ShouldRetryAfterHeader = true,
         });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
