@@ -92,15 +92,13 @@ public class CustomersController : ControllerBase
         string email,
         CancellationToken cancellationToken)
     {
-        return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        var query = new GetCustomerQuery(null, email);
 
-        // var query = new GetCustomerQuery(null, email);
+        var response = await _getCustomerHandler.HandleAsync(
+            query,
+            cancellationToken);
 
-        // var response = await _getCustomerHandler.HandleAsync(
-        //     query,
-        //     cancellationToken);
-
-        // return Ok(new { response.CustomerId, response.Status, response.FirstName, response.LastName, response.Email });
+        return Ok(new { response.CustomerId, response.Status, response.FirstName, response.LastName, response.Email });
     }
 
     [HttpPut("{customerId:guid}")]
