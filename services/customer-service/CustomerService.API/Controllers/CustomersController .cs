@@ -92,13 +92,18 @@ public class CustomersController : ControllerBase
         string email,
         CancellationToken cancellationToken)
     {
-        var query = new GetCustomerQuery(null, email);
+        Response.Headers.RetryAfter = "5";
 
-        var response = await _getCustomerHandler.HandleAsync(
-            query,
-            cancellationToken);
+        return StatusCode(
+            StatusCodes.Status429TooManyRequests,
+            new { message = "Customer Service rate limit simulation." });
+        // var query = new GetCustomerQuery(null, email);
 
-        return Ok(new { response.CustomerId, response.Status, response.FirstName, response.LastName, response.Email });
+        // var response = await _getCustomerHandler.HandleAsync(
+        //     query,
+        //     cancellationToken);
+
+        // return Ok(new { response.CustomerId, response.Status, response.FirstName, response.LastName, response.Email });
     }
 
     [HttpPut("{customerId:guid}")]
