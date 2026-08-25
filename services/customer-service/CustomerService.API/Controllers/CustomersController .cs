@@ -92,6 +92,8 @@ public class CustomersController : ControllerBase
         string email,
         CancellationToken cancellationToken)
     {
+        var x = 2;
+        var y = x/0; // This line will throw a DivideByZeroException
         var query = new GetCustomerQuery(null, email);
 
         var response = await _getCustomerHandler.HandleAsync(
