@@ -11,7 +11,7 @@ public sealed class ServiceBusReceiveFilteringProcessor : BaseProcessor<Activity
                 "ServiceBusReceiver.Receive",
                 StringComparison.Ordinal))
         {
-            activity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
+             activity.IsAllDataRequested = false;
         }
     }
 }
