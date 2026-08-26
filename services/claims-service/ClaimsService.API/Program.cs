@@ -14,6 +14,7 @@ using Npgsql;
 using ClaimsService.Application;
 using ClaimsService.Application.Commands;
 using ClaimsService.Application.Sagas;
+using ClaimsService.API.Observability;
 using BuildingBlocks.Contracts.Claims;
 using BuildingBlocks.Contracts.Documents;
 using BuildingBlocks.Contracts.Fraud;
@@ -300,14 +301,12 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 
 var traceSampleRatio = builder.Configuration.GetValue<double?>("Observability:Tracing:SampleRatio") ?? 1.0;
 builder.Services.AddOpenTelemetry()
-    .UseAzureMonitor(options =>
-    {
-        options.ConnectionString = appInsightsConnectionString;
-    })
     .WithTracing(tracerProvider =>
     {
         tracerProvider
             .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(traceSampleRatio)))
+            .AddProcessor(
+                new ServiceBusReceiveFilteringProcessor())
             .AddAspNetCoreInstrumentation(options =>
             {
                 options.Filter = httpContext =>
@@ -328,6 +327,10 @@ builder.Services.AddOpenTelemetry()
             .AddMeter(TelemetryConstants.MeterName)
             .AddAspNetCoreInstrumentation()
             .AddRuntimeInstrumentation();
+    })
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
     });
 
 var app = builder.Build();
