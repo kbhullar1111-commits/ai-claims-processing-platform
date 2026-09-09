@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace ClaimsService.Infrastructure.Identity;
 public sealed class CustomerClient : ICustomerClient
@@ -14,19 +15,33 @@ public sealed class CustomerClient : ICustomerClient
 
     private readonly ICustomerIdCache _customerIdCache;
 
-    public CustomerClient(HttpClient httpClient, ICustomerIdCache customerIdCache)
+    private readonly ILogger<CustomerClient> _logger;
+
+    public CustomerClient(HttpClient httpClient, ICustomerIdCache customerIdCache, ILogger<CustomerClient> logger)
     {
         _httpClient = httpClient;
         _customerIdCache = customerIdCache;
+        _logger = logger;
     }
 
     public async Task<Guid?> GetCustomerIdByEmailAsync(
         string email,
         CancellationToken cancellationToken)
     {
-        var cachedCustomerId = await _customerIdCache.GetAsync(
-            email,
-            cancellationToken);
+        try
+        {
+            var cachedCustomerId = await _customerIdCache.GetAsync(
+                email,
+                cancellationToken);
+        }
+        catch (RedisException ex)
+        {
+            // Log the exception if needed, but do not fail the operation
+            _logger.LogWarning(
+                ex,
+                "Redis cache unavailable while resolving CustomerId for email {Email}. Falling back to Customer Service.",
+                email);
+        }
 
         if (cachedCustomerId.HasValue)
         {
@@ -42,11 +57,22 @@ public sealed class CustomerClient : ICustomerClient
             return null;
         }
 
-        await _customerIdCache.SetAsync(
-            email,
-            customer.CustomerId,
-            TimeSpan.FromHours(1),
-            cancellationToken);
+        try
+        {
+            await _customerIdCache.SetAsync(
+                email,
+                customer.CustomerId,
+                TimeSpan.FromHours(1),
+                cancellationToken);
+        }
+        catch (RedisException ex)
+        {
+            // Log the exception if needed, but do not fail the operation
+            _logger.LogWarning(
+                ex,
+                "Failed to populate CustomerId cache for email {Email}. Continuing without cache.",
+                email);
+        }
 
         return customer.CustomerId;
     }
