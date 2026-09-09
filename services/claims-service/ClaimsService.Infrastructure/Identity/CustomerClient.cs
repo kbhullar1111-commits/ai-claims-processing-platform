@@ -37,16 +37,9 @@ public sealed class CustomerClient : ICustomerClient
 
             if (cachedCustomerId.HasValue)
             {
-                _logger.LogInformation(
-                    "CustomerId cache HIT for email {Email}",
-                    email);
-
                 return cachedCustomerId.Value;
             }
 
-            _logger.LogInformation(
-                "CustomerId cache MISS for email {Email}",
-                email);
         }
         catch (Exception ex)
         {
