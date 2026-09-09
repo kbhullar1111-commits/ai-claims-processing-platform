@@ -34,7 +34,7 @@ public sealed class CustomerClient : ICustomerClient
                 email,
                 cancellationToken);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             // Log the exception if needed, but do not fail the operation
             _logger.LogWarning(
@@ -65,7 +65,7 @@ public sealed class CustomerClient : ICustomerClient
                 TimeSpan.FromHours(1),
                 cancellationToken);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             // Log the exception if needed, but do not fail the operation
             _logger.LogWarning(
