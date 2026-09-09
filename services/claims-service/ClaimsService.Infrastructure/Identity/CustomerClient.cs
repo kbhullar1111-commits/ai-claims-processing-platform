@@ -28,9 +28,11 @@ public sealed class CustomerClient : ICustomerClient
         string email,
         CancellationToken cancellationToken)
     {
+        Guid? cachedCustomerId = null;
+        
         try
         {
-            var cachedCustomerId = await _customerIdCache.GetAsync(
+            cachedCustomerId = await _customerIdCache.GetAsync(
                 email,
                 cancellationToken);
         }
