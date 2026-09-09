@@ -27,17 +27,17 @@ public sealed class GetMyClaimsQueryHandler
         CancellationToken cancellationToken)
     {
 
-        var customer = await _customerClient.GetByEmailAsync(
+        var customerId = await _customerClient.GetCustomerIdByEmailAsync(
         _currentUser.Email!,
         cancellationToken);
 
-        if (customer == null)
+        if (customerId is not Guid resolvedCustomerId)
         {
             return [];
         }
 
         var claims = await _claimRepository.GetByCustomerIdAsync(
-            customer.CustomerId);
+            resolvedCustomerId);
 
         return claims
             .Select(c => new ClaimSummaryDto(

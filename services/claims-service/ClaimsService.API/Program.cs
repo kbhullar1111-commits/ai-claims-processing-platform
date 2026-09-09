@@ -9,6 +9,7 @@ using ClaimsService.Infrastructure.Repositories;
 using ClaimsService.Infrastructure.Observability.Metrics;
 using ClaimsService.Infrastructure.Observability.Constants;
 using ClaimsService.Infrastructure.Messaging;
+using ClaimsService.Infrastructure.Caching;
 using MediatR;
 using Npgsql;
 using ClaimsService.Application;
@@ -34,7 +35,6 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -330,7 +330,22 @@ builder.Services.AddOpenTelemetry()
             .AddRuntimeInstrumentation();
     });
 
+var redisEndpoint = builder.Configuration["Redis:Endpoint"];
+
+if (string.IsNullOrWhiteSpace(redisEndpoint))
+{
+    throw new InvalidOperationException(
+        "Missing Redis endpoint. Ensure configuration key 'Redis:Endpoint' exists.");
+}
+
+builder.Services.AddSingleton<RedisConnection>();
+builder.Services.AddSingleton<ICustomerIdCache, RedisCustomerIdCache>();
+
+
 var app = builder.Build();
+
+await app.Services.GetRequiredService<RedisConnection>()
+    .ConnectAsync(redisEndpoint, app.Lifetime.ApplicationStopping);
 
 await EnsureDatabaseIsReachableAsync(app.Services);
 

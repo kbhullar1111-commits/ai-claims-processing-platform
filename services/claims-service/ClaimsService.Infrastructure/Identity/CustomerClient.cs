@@ -12,9 +12,43 @@ public sealed class CustomerClient : ICustomerClient
 {
     private readonly HttpClient _httpClient;
 
-    public CustomerClient(HttpClient httpClient)
+    private readonly ICustomerIdCache _customerIdCache;
+
+    public CustomerClient(HttpClient httpClient, ICustomerIdCache customerIdCache)
     {
         _httpClient = httpClient;
+        _customerIdCache = customerIdCache;
+    }
+
+    public async Task<Guid?> GetCustomerIdByEmailAsync(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var cachedCustomerId = await _customerIdCache.GetAsync(
+            email,
+            cancellationToken);
+
+        if (cachedCustomerId.HasValue)
+        {
+            return cachedCustomerId.Value;
+        }
+
+        var customer = await GetByEmailAsync(
+            email,
+            cancellationToken);
+
+        if (customer is null)
+        {
+            return null;
+        }
+
+        await _customerIdCache.SetAsync(
+            email,
+            customer.CustomerId,
+            TimeSpan.FromHours(1),
+            cancellationToken);
+
+        return customer.CustomerId;
     }
 
     public async Task<CustomerContext?> GetByEmailAsync(
@@ -22,6 +56,7 @@ public sealed class CustomerClient : ICustomerClient
         CancellationToken cancellationToken)
     {
         try{
+
             var response = await _httpClient.GetAsync(
                 $"customers/by-email/{Uri.EscapeDataString(email)}",
                 cancellationToken);

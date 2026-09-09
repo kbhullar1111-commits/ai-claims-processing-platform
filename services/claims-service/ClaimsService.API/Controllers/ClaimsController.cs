@@ -43,10 +43,10 @@ public class ClaimsController : ControllerBase
         }
         
         _logger.LogInformation("Submitting claim for user: {UserId}, email: {Email}, name: {Name}", _currentUser.UserId, _currentUser.Email, _currentUser.Name);
-        var customer = await _customerClient.GetByEmailAsync(
+        var customerId = await _customerClient.GetCustomerIdByEmailAsync(
         _currentUser.Email!, cancellationToken);
 
-        if (customer == null)
+        if (customerId is not Guid resolvedCustomerId)
         {
             _logger.LogWarning("Customer not found for email: {Email}", _currentUser.Email);
             return NotFound(new { Message = "Customer not found." });
@@ -54,7 +54,7 @@ public class ClaimsController : ControllerBase
 
 
         var command = new SubmitClaimCommand(
-            customer.CustomerId,
+            resolvedCustomerId,
             Guid.Parse(request.PolicyId),
             request.ClaimAmount);
 
