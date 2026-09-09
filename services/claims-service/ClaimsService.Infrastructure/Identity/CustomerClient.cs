@@ -28,13 +28,25 @@ public sealed class CustomerClient : ICustomerClient
         string email,
         CancellationToken cancellationToken)
     {
-        Guid? cachedCustomerId = null;
-        
+
         try
         {
-            cachedCustomerId = await _customerIdCache.GetAsync(
+            var cachedCustomerId = await _customerIdCache.GetAsync(
                 email,
                 cancellationToken);
+
+            if (cachedCustomerId.HasValue)
+            {
+                _logger.LogInformation(
+                    "CustomerId cache HIT for email {Email}",
+                    email);
+
+                return cachedCustomerId.Value;
+            }
+
+            _logger.LogInformation(
+                "CustomerId cache MISS for email {Email}",
+                email);
         }
         catch (Exception ex)
         {
@@ -45,10 +57,6 @@ public sealed class CustomerClient : ICustomerClient
                 email);
         }
 
-        if (cachedCustomerId.HasValue)
-        {
-            return cachedCustomerId.Value;
-        }
 
         var customer = await GetByEmailAsync(
             email,
