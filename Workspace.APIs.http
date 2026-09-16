@@ -1,5 +1,6 @@
 @gatewayHost = https://localhost:7063
 
+
 @claimsApi = {{gatewayHost}}/api/claims
 
 @customerApi = {{gatewayHost}}/api/customers
@@ -8,10 +9,13 @@
 
 @documentApi = {{gatewayHost}}/api/documents
 
+@policyApi = {{gatewayHost}}/api/policies
+
+@policyTypeApi = {{gatewayHost}}/api/policy-types
+
 @token = 3333333333333333333333333333333333333
 
-@claimId=24e93765-9682-464d-84d7-055fbeb055a7
-//@claimId = {{submitClaim.response.body.$.claimId}}
+@claimId = 1213132jnbn5bn5nb5bn23m2m3
 
 ### Outbox verification flow
 ### 1. Run infrastructure/docker/commands/check-outbox.cmd to capture the baseline.
@@ -191,7 +195,8 @@ Authorization: Bearer {{token}}
 ###
 
 # @customerId={{createCustomer.response.body.$.customerId}}
-@customerId=8eabb35d-8adc-435a-a629-9606b4a7815e
+@customerId=3123-1-31s-d23-d2-d
+@email=Kamal.Singh1129@outlook.com
 
 ### Get All Customers
 
@@ -211,7 +216,7 @@ Authorization: Bearer {{token}}
 
 ### Get Customer by Email
 
-GET {{customerApi}}/by-email/{email}
+GET {{customerApi}}/by-email/{{email}}
 Accept: application/json
 Authorization: Bearer {{token}}
 
@@ -242,6 +247,87 @@ Authorization: Bearer {{token}}
 ###
 
 
+
+### =====================
+### Policy Service
+### =====================
+
+@policyId=6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec
+@policyTypeDefinitionId=8eabb35d-8adc-435a-a629-9606b4a7815e
+
+### Create policy
+# @name createPolicy
+POST {{policyApi}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "customerId": "{{customerId}}",
+  "policyName": "Comprehensive Vehicle Cover",
+  "policyTypeEffectiveFrom": "2026-01-01T00:00:00Z",
+  "effectiveDate": "2026-01-01T00:00:00Z",
+  "expirationDate": "2026-12-31T23:59:59Z",
+  "registrationNumber": "KA01AB1234",
+  "model": "Nexon",
+  "vehicleType": "Car"
+}
+
+### Get policies for customer
+GET {{policyApi}}?customerId={{customerId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Get policy
+GET {{policyApi}}/{{policyId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Update policy status
+PUT {{policyApi}}/{{policyId}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "Active"
+}
+
+### Get all policy types
+GET {{policyTypeApi}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Get policy type
+GET {{policyTypeApi}}/{{policyTypeDefinitionId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Create policy type
+# @name createPolicyType
+POST {{policyTypeApi}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "type": "Comprehensive",
+  "name": "Comprehensive Vehicle Cover",
+  "effectiveFrom": "2026-01-01T00:00:00Z",
+  "effectiveTo": "2026-12-31T23:59:59Z",
+  "coverages": [
+    {
+      "type": "Collision",
+      "coverageLimit": 1000000
+    },
+    {
+      "type": "Theft",
+      "coverageLimit": 750000
+    }
+  ],
+  "maximumClaimAmount": 1000000,
+  "allowedVehicleTypes": ["Car", "Truck"]
+}
 
 ### =====================
 ### Notification Service
