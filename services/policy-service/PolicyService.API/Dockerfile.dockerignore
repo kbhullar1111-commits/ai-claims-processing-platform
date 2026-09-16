@@ -1,0 +1,7 @@
+**
+!services/policy-service/PolicyService.API/**
+!services/policy-service/PolicyService.Application/**
+!services/policy-service/PolicyService.Domain/**
+!services/policy-service/PolicyService.Infrastructure/**
+**/bin/**
+**/obj/**

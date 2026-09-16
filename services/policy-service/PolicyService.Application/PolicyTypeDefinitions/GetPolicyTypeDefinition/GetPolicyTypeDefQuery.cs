@@ -1,0 +1,3 @@
+namespace PolicyService.Application.PolicyTypeDefinitions;
+
+public sealed record GetPolicyTypeDefQuery(Guid PolicyTypeDefinitionId);

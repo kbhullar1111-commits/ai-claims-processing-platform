@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PolicyService.API/PolicyService.API.csproj" />
+  <Project Path="PolicyService.Application/PolicyService.Application.csproj" />
+  <Project Path="PolicyService.Domain/PolicyService.Domain.csproj" />
+  <Project Path="PolicyService.Infrastructure/PolicyService.Infrastructure.csproj" />
+</Solution>

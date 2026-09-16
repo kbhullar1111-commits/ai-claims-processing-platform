@@ -84,6 +84,28 @@
       "group": "build"
     },
     {
+      "label": "build-customer-service",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/services/customer-service/CustomerService.API/CustomerService.API.csproj"
+      ],  
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build-policy-service",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/services/policy-service/PolicyService.API/PolicyService.API.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
       "label": "build-deployment-console",
       "command": "dotnet",
       "type": "process",

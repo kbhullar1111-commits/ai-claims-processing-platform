@@ -96,6 +96,18 @@ artifacts:
       - CustomerService.API/obj
       - CustomerService.API/bin
 
+  - name: policy-service
+    type: api
+    root: services/policy-service
+    entryPoint: services/policy-service/PolicyService.API
+    dockerfile: services/policy-service/PolicyService.API/Dockerfile
+
+    dependencies: []
+    ignoredPaths:
+      - PolicyService.API/Properties
+      - PolicyService.API/obj
+      - PolicyService.API/bin
+
   # Will work on fucntion app deployment automation later
   # - name: document-processor
   #   type: function

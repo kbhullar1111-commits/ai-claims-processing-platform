@@ -119,6 +119,39 @@ docker push %IMAGE%
 az containerapp update --name %SERVICE_NAME% --resource-group %RG% --image %IMAGE%
 ```
 
+### Policy service
+
+```cmd
+set SERVICE_NAME=policy-service
+set IMAGE=%ACR_SERVER%/%SERVICE_NAME%:%TAG%
+
+docker build -f services/policy-service/PolicyService.API/Dockerfile -t %SERVICE_NAME% .
+docker tag %SERVICE_NAME% %IMAGE%
+docker push %IMAGE%
+az containerapp update --name %SERVICE_NAME% --resource-group %RG% --image %IMAGE%
+```
+
+If the Container App was created but its revision shows `Activation failed` with
+`unable to pull image using Managed Identity`, configure the registry pull identity
+before updating the image:
+
+```cmd
+set SERVICE_NAME=policy-service
+set IMAGE=%ACR_SERVER%/%SERVICE_NAME%:%TAG%
+
+az containerapp identity assign --name %SERVICE_NAME% --resource-group %RG% --system-assigned
+for /f "delims=" %i in ('az containerapp show --name %SERVICE_NAME% --resource-group %RG% --query identity.principalId -o tsv') do set ACA_PRINCIPAL_ID=%i
+for /f "delims=" %i in ('az acr show --name %ACR_NAME% --query id -o tsv') do set ACR_ID=%i
+az role assignment create --assignee-object-id %ACA_PRINCIPAL_ID% --assignee-principal-type ServicePrincipal --role AcrPull --scope %ACR_ID%
+az containerapp registry set --name %SERVICE_NAME% --resource-group %RG% --server %ACR_SERVER% --identity system
+az containerapp update --name %SERVICE_NAME% --resource-group %RG% --image %IMAGE%
+```
+
+For a new Container App, include `--system-assigned --registry-identity system` in
+the create command, then grant the identity the `AcrPull` role and run the update
+commands above. The app resource can exist even while its first revision is unable
+to activate, so creation success alone does not confirm that the image was pulled.
+
 ## 5) One-time Container App create commands
 
 ```cmd
@@ -161,6 +194,12 @@ az containerapp create --name %SERVICE_NAME% --resource-group %RG% --image %IMAG
 set SERVICE_NAME=customer-service
 set IMAGE=%ACR_SERVER%/%SERVICE_NAME%:%TAG%
 az containerapp create --name %SERVICE_NAME% --resource-group %RG% --image %IMAGE% --environment %ACA_ENV% --ingress external --registry-server %ACR_SERVER% --target-port 8080 --env-vars ASPNETCORE_URLS=http://+:8080
+```
+
+```cmd
+set SERVICE_NAME=policy-service
+set IMAGE=%ACR_SERVER%/%SERVICE_NAME%:%TAG%
+az containerapp create --name %SERVICE_NAME% --resource-group %RG% --image %IMAGE% --environment %ACA_ENV% --ingress external --registry-server %ACR_SERVER% --registry-identity system --system-assigned --target-port 8080 --env-vars ASPNETCORE_URLS=http://+:8080
 ```
 
 ## 6) Serverless / Function App deployment example
