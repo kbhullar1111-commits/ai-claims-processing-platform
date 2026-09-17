@@ -31,10 +31,12 @@ public sealed class PolicyClient : IPolicyClient
             {
                 var reason = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                throw new HttpRequestException(
-                    $"Policy validation was rejected with HTTP 400: {reason}",
+                return new ValidateClaimResponse(
+                    false,
                     null,
-                    response.StatusCode);
+                    null,
+                    reason
+                );
             }
 
             response.EnsureSuccessStatusCode();
