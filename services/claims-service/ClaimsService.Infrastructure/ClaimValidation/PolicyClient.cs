@@ -7,9 +7,12 @@ using Microsoft.Extensions.Logging;
 namespace ClaimsService.Infrastructure.ClaimValidation;
 public sealed class PolicyClient : IPolicyClient
 {
+    private sealed record PolicyErrorResponse(string? Message);
+
     private readonly HttpClient _httpClient;
 
     private readonly ILogger<PolicyClient> _logger;
+    
 
     public PolicyClient(HttpClient httpClient, ILogger<PolicyClient> logger)
     {
@@ -29,14 +32,14 @@ public sealed class PolicyClient : IPolicyClient
 
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
-                var reason = await response.Content.ReadAsStringAsync(cancellationToken);
+                var error = await response.Content
+                    .ReadFromJsonAsync<PolicyErrorResponse>(cancellationToken);
 
                 return new ValidateClaimResponse(
                     false,
                     null,
                     null,
-                    reason
-                );
+                    error?.Message ?? "Policy validation failed.");
             }
 
             response.EnsureSuccessStatusCode();
