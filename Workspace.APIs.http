@@ -1,6 +1,5 @@
 @gatewayHost = https://localhost:7063
 
-
 @claimsApi = {{gatewayHost}}/api/claims
 
 @customerApi = {{gatewayHost}}/api/customers
@@ -15,7 +14,7 @@
 
 @token = 3333333333333333333333333333333333333
 
-@claimId = 1213132jnbn5bn5nb5bn23m2m3
+@claimId = JHBHJB5JH3BHJ345JHB34HJ
 
 ### Outbox verification flow
 ### 1. Run infrastructure/docker/commands/check-outbox.cmd to capture the baseline.
@@ -38,8 +37,10 @@ Accept: application/json
 Authorization: Bearer {{token}}
 
 {
-  "policyId": "6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec",
-  "claimAmount": 5000.20
+  "VehicleRegistrationNumber": "KA01 A 1234",
+  "incidentType": "Collision",
+  "claimAmount": 50000.20,
+  "incidentDate": "2026-09-17T00:00:00Z"
 }
 
 
@@ -195,8 +196,8 @@ Authorization: Bearer {{token}}
 ###
 
 # @customerId={{createCustomer.response.body.$.customerId}}
-@customerId=3123-1-31s-d23-d2-d
-@email=Kamal.Singh1129@outlook.com
+@customerId=JK3N4KJ5N34KJ5N43K
+@email=Kamal.Singh38378@outlook.com
 
 ### Get All Customers
 
@@ -252,8 +253,8 @@ Authorization: Bearer {{token}}
 ### Policy Service
 ### =====================
 
-@policyId=6d2c5d08-c7cf-4f4e-9b2f-ec4a4c3e32ec
-@policyTypeDefinitionId=8eabb35d-8adc-435a-a629-9606b4a7815e
+@policyId=234234HBNJHB4J2B
+@policyTypeDefinitionId=b234NKEDE76FD767
 
 ### Create policy
 # @name createPolicy
@@ -264,12 +265,12 @@ Authorization: Bearer {{token}}
 
 {
   "customerId": "{{customerId}}",
-  "policyName": "Comprehensive Vehicle Cover",
-  "policyTypeEffectiveFrom": "2026-01-01T00:00:00Z",
-  "effectiveDate": "2026-01-01T00:00:00Z",
-  "expirationDate": "2026-12-31T23:59:59Z",
-  "registrationNumber": "KA01AB1234",
-  "model": "Nexon",
+  "policyName": "OwnDamage Vehicle Cover",
+  "policyTypeEffectiveFrom": "2026-09-01T00:00:00Z",
+  "effectiveDate": "2026-09-01T00:00:00Z",
+  "expirationDate": "2030-12-31T23:59:59Z",
+  "registrationNumber": "KA01 A 1234",
+  "model": "Tata Nexon Accomplished",
   "vehicleType": "Car"
 }
 
@@ -293,6 +294,20 @@ Authorization: Bearer {{token}}
   "status": "Active"
 }
 
+### Validate claim against policy
+POST {{policyApi}}/validate-claim
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+{
+  "customerId": "{{customerId}}",
+  "vehicleRegistrationNumber": "KA01 A 1234",
+  "incidentType": "Collision",
+  "claimAmount": 5000.20,
+  "incidentDate": "2026-09-17T00:00:00Z"
+}
+
 ### Get all policy types
 GET {{policyTypeApi}}
 Accept: application/json
@@ -311,22 +326,22 @@ Accept: application/json
 Authorization: Bearer {{token}}
 
 {
-  "type": "Comprehensive",
-  "name": "Comprehensive Vehicle Cover",
+  "type": "ThirdParty",
+  "name": "ThirdParty Vehicle Cover",
   "effectiveFrom": "2026-01-01T00:00:00Z",
-  "effectiveTo": "2026-12-31T23:59:59Z",
+  "effectiveTo": null,
   "coverages": [
     {
       "type": "Collision",
-      "coverageLimit": 1000000
+      "coverageLimit": 350000
     },
     {
-      "type": "Theft",
-      "coverageLimit": 750000
+      "type": "ThirdPartyLiability",
+      "coverageLimit": 300000
     }
   ],
-  "maximumClaimAmount": 1000000,
-  "allowedVehicleTypes": ["Car", "Truck"]
+  "maximumClaimAmount": 600000 ,
+  "allowedVehicleTypes": ["Car", "MotorCycle"]
 }
 
 ### =====================

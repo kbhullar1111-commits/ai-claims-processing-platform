@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PolicyService.API.Models;
 using PolicyService.Application.Policies;
+using PolicyService.Domain.Enums;
 
 namespace PolicyService.API.Controllers;
 
@@ -12,17 +13,20 @@ public class PolicyController : ControllerBase
     private readonly GetPolicyQueryHandler _getPolicyHandler;
     private readonly GetPoliciesQueryHandler _getPoliciesHandler;
     private readonly UpdatePolicyCommandHandler _updatePolicyHandler;
+    private readonly ValidatePolicyHandler _validatePolicyHandler;
 
     public PolicyController(
         CreatePolicyCommandHandler createPolicyHandler,
         GetPolicyQueryHandler getPolicyHandler,
         GetPoliciesQueryHandler getPoliciesHandler,
-        UpdatePolicyCommandHandler updatePolicyHandler)
+        UpdatePolicyCommandHandler updatePolicyHandler,
+        ValidatePolicyHandler validatePolicyHandler)
     {
         _createPolicyHandler = createPolicyHandler;
         _getPolicyHandler = getPolicyHandler;
         _getPoliciesHandler = getPoliciesHandler;
         _updatePolicyHandler = updatePolicyHandler;
+        _validatePolicyHandler = validatePolicyHandler;
     }
 
     [HttpPost]
@@ -86,6 +90,48 @@ public class PolicyController : ControllerBase
         var response = await _updatePolicyHandler.HandleAsync(command, cancellationToken);
 
         return Ok(response);
+    }
+
+    [HttpPost("validate-claim")]
+    public async Task<IActionResult> ValidateClaim(ValidateClaimRequest request, CancellationToken cancellationToken)
+    {
+        CoverageType incidentType;
+        try
+        {
+            incidentType = MapIncidentType(request.IncidentType);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        var command = new ValidatePolicyCommand(
+            request.CustomerId,
+            request.VehicleRegistrationNumber,
+            incidentType,
+            request.ClaimAmount,
+            request.IncidentDate);
+
+        var response = await _validatePolicyHandler.HandleAsync(command, cancellationToken);
+
+        return Ok(new ValidateClaimResponse(
+            response.Eligible,
+            response.PolicyId,
+            response.PolicyNumber,
+            response.Reason));
+    }
+
+    private CoverageType MapIncidentType(string incidentType)
+    {
+        return incidentType.ToLowerInvariant() switch
+        {
+            "collision" => CoverageType.Collision,
+            "theft" => CoverageType.Theft,
+            "thirdpartliability" => CoverageType.ThirdPartyLiability,
+
+            _ => throw new ArgumentException(
+                $"Unsupported incident type: {incidentType}. Choose one of the following - collision, theft, thirdpartliability" )
+        };
     }
 
 }

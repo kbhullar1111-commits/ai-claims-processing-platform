@@ -135,6 +135,7 @@ builder.Services.AddScoped<CreatePolicyCommandHandler>();
 builder.Services.AddScoped<GetPolicyQueryHandler>();
 builder.Services.AddScoped<GetPoliciesQueryHandler>();
 builder.Services.AddScoped<UpdatePolicyCommandHandler>();
+builder.Services.AddScoped<ValidatePolicyHandler>();
 builder.Services.AddScoped<CreatePolicyTypeDefinitionHandler>();
 builder.Services.AddScoped<GetPolicyTypeDefQueryHandler>();
 builder.Services.AddScoped<GetPolicyTypeDefinitionsQueryHandler>();

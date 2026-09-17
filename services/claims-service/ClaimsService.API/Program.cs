@@ -5,6 +5,7 @@ using ClaimsService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ClaimsService.Application.Interfaces;
 using ClaimsService.Infrastructure.Identity;
+using ClaimsService.Infrastructure.ClaimValidation;
 using ClaimsService.Infrastructure.Repositories;
 using ClaimsService.Infrastructure.Observability.Metrics;
 using ClaimsService.Infrastructure.Observability.Constants;
@@ -276,6 +277,35 @@ builder.Services.AddHttpClient<ICustomerClient, CustomerClient>(client =>
 .AddHttpMessageHandler<CustomerServiceAuthenticationHandler>()
 .AddResilienceHandler(
     "CustomerServiceResilience",
+    static pipeline =>
+    {
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,
+            MinimumThroughput = 4,
+            SamplingDuration = TimeSpan.FromSeconds(10),
+            BreakDuration = TimeSpan.FromSeconds(20)
+        });
+
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            Delay = TimeSpan.FromMilliseconds(200),
+            ShouldRetryAfterHeader = true
+        });
+
+        pipeline.AddTimeout(TimeSpan.FromSeconds(5));
+    });
+
+builder.Services.AddHttpClient<IPolicyClient, PolicyClient>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:PolicyService:BaseUrl"]!);
+})
+.AddResilienceHandler(
+    "PolicyServiceResilience",
     static pipeline =>
     {
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
